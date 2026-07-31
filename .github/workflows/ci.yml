@@ -1,0 +1,177 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout source code
+        uses: actions/checkout@v7
+
+      # Pinned to the oldest PHP that FreshRSS 1.29 supports, so a syntax feature
+      # newer than the declared floor fails here rather than at a user's install.
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+
+      # The prunes are not redundant just because those directories happen to be
+      # absent this early in the job: without them the check silently starts
+      # linting third-party PHP the day a step is reordered, and reports on code
+      # this repository does not own.
+      - name: Check PHP syntax
+        run: |
+          php -v
+          find . \( -path ./vendor -o -path ./node_modules -o -path ./.freshrss-core \) -prune -o \
+            \( -name '*.php' -o -name '*.phtml' \) -print0 | xargs -0 -n1 php -l
+
+      - name: Check metadata.json is valid JSON
+        run: |
+          python3 -c "import json,sys; d=json.load(open('metadata.json')); \
+            [sys.exit('missing key: ' + k) for k in ('name','entrypoint','type','version') if k not in d]"
+
+      - name: Check the entrypoint matches the class name
+        run: |
+          entry=$(python3 -c "import json; print(json.load(open('metadata.json'))['entrypoint'])")
+          grep -q "class ${entry}Extension" extension.php \
+            || { echo "extension.php has no class ${entry}Extension"; exit 1; }
+
+      # registerController('x') binds three names that have to agree, and a
+      # mismatch is invisible until someone opens the page and gets a 404 from
+      # the dispatcher: Minz_Dispatcher includes Controllers/xController.php and
+      # instantiates FreshExtension_x_Controller (lib/Minz/Dispatcher.php).
+      - name: Check the controller file and class match registerController()
+        run: |
+          base=$(sed -n "s/.*registerController('\([a-zA-Z0-9]*\)').*/\1/p" extension.php)
+          test -n "$base" || { echo 'no registerController() call found in extension.php'; exit 1; }
+          echo "registered controller: $base"
+          test -f "Controllers/${base}Controller.php" \
+            || { echo "missing Controllers/${base}Controller.php"; exit 1; }
+          grep -q "class FreshExtension_${base}_Controller" "Controllers/${base}Controller.php" \
+            || { echo "Controllers/${base}Controller.php has no class FreshExtension_${base}_Controller"; exit 1; }
+          # Minz_Request filters the controller name with ctype_alnum, so a base
+          # name carrying a separator can never be routed to at all.
+          php -r 'exit(ctype_alnum($argv[1]) ? 0 : 1);' "$base" \
+            || { echo "controller base name '$base' is not alphanumeric"; exit 1; }
+
+      - name: Check JavaScript syntax
+        run: |
+          node --version
+          find static -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Run the click-detection tests
+        run: |
+          set -o pipefail   # otherwise the pipe below reports tee's exit code
+          # Pin the reporter: the default differs between Node versions and the
+          # guard below parses its output. The whole directory, not one file by
+          # name, so a test added tomorrow cannot be silently skipped. The glob
+          # rather than `tests/`: newer Node reads a bare directory as a module
+          # path and reports zero tests.
+          node --test --test-reporter=tap tests/*.test.js | tee test.log
+          # `node --test` exits 0 on a skipped run, and an empty file still
+          # reports `# pass 1`, so count the cases that are meant to run.
+          expected=$(cat tests/*.test.js | grep -c '^test(')
+          passed=$(sed -n 's/^# pass \([0-9]*\)$/\1/p' test.log)
+          skipped=$(sed -n 's/^# skipped \([0-9]*\)$/\1/p' test.log)
+          echo "expected=${expected} passed=${passed:-0} skipped=${skipped:-0}"
+          test "${passed:-0}" -eq "${expected}" \
+            || { echo "expected ${expected} passing tests, got ${passed:-0}"; exit 1; }
+          test "${skipped:-0}" -eq 0 || { echo 'a test was skipped'; exit 1; }
+
+      # A missing key does not fail loudly at runtime — FreshRSS renders the key
+      # itself, so an untranslated page looks like a typo rather than a bug.
+      - name: Check every translation key used by the extension exists
+        run: |
+          php -r '
+            $source = "";
+            foreach (["extension.php", "configure.phtml"] as $file) {
+              $source .= file_get_contents($file);
+            }
+            // Both depths: views/<controller>/<action>.phtml and the helpers,
+            // which sit one level deeper under views/helpers/<controller>/.
+            foreach (array_merge(glob("Controllers/*.php"), glob("views/*/*.phtml"), glob("views/*/*/*.phtml")) as $file) {
+              $source .= file_get_contents($file);
+            }
+            preg_match_all("/_t\(.ext\.click_history\.([a-z_.]+)./", $source, $m);
+            $keys = array_values(array_unique($m[1]));
+            if (count($keys) < 10) {
+              fwrite(STDERR, "only " . count($keys) . " keys found - did the pattern stop matching?\n");
+              exit(1);
+            }
+            echo count($keys), " keys used\n";
+            foreach (glob("i18n/*/ext.php") as $file) {
+              $flat = [];
+              $walk = function (array $node, string $prefix) use (&$walk, &$flat): void {
+                foreach ($node as $key => $value) {
+                  is_array($value) ? $walk($value, "$prefix$key.") : $flat[] = "$prefix$key";
+                }
+              };
+              $walk(require $file, "");
+              foreach ($keys as $key) {
+                if (!in_array("click_history.$key", $flat, true)) {
+                  fwrite(STDERR, "$file is missing click_history.$key\n");
+                  exit(1);
+                }
+              }
+              echo "$file ok\n";
+            }
+          '
+
+      # Everything above needs nothing but the runner. The linters below pull
+      # a toolchain over the network, and a failure there used to skip every
+      # remaining step — including the tests.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install JS dev dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check JavaScript style (ESLint)
+        run: pnpm run eslint
+
+      # PHPStan needs the FreshRSS core classes this extension extends
+      # (Minz_Extension, Minz_ModelPdo and friends), which do not live in this
+      # repository. Mirrors how github.com/FreshRSS/Extensions lints third-party
+      # extensions: check core out as a sibling directory purely to resolve those
+      # classes, excluded from analysis itself (see phpstan.neon).
+      - name: Git checkout FreshRSS core for PHPStan
+        uses: actions/checkout@v7
+        with:
+          repository: FreshRSS/FreshRSS
+          # The oldest release this extension supports, so using anything newer
+          # than it fails the build rather than a stranger's install.
+          ref: '1.29.0'
+          path: .freshrss-core
+          persist-credentials: false
+
+      - name: Use Composer cache
+        id: composer-cache
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install PHP dev dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Check PHP code style (PHP_CodeSniffer, FreshRSS' ruleset)
+        run: vendor/bin/phpcs .
+
+      - name: Static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress
