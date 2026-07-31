@@ -15,7 +15,6 @@ return array(
 		'action' => array(
 			'delete' => 'Löschen',
 			'clear' => 'Gesamten Verlauf löschen',
-			'clear_confirm' => 'Den gesamten Klick-Verlauf löschen? Das lässt sich nicht rückgängig machen.',
 		),
 		'conf' => array(
 			'track_clicks' => 'Geöffnete Artikel aufzeichnen',

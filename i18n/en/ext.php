@@ -15,7 +15,6 @@ return array(
 		'action' => array(
 			'delete' => 'Delete',
 			'clear' => 'Delete the whole history',
-			'clear_confirm' => 'Delete the whole click history? This cannot be undone.',
 		),
 		'conf' => array(
 			'track_clicks' => 'Record opened articles',

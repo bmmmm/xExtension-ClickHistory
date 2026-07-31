@@ -68,9 +68,15 @@
 			<div class="group-controls">
 				<form method="post" action="<?= _url('clickhistory', 'clear') ?>">
 					<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
-					<button type="submit" class="btn btn-attention confirm"
-						data-str-confirm="<?= htmlspecialchars(_t('ext.click_history.action.clear_confirm'), ENT_COMPAT, 'UTF-8') ?>"><?=
-						_t('ext.click_history.action.clear') ?></button>
+					<?php
+						// The `confirm` class alone: core's init_confirm_action() puts its
+						// handler on document.body and then reads `data-str-confirm` with
+						// this.getAttribute(), where `this` is the body rather than the
+						// button that was clicked (p/scripts/main.js). A wording of our own
+						// on this button can therefore never be shown — verified against
+						// 1.29.1 — so the generic core message is what users get.
+					?>
+					<button type="submit" class="btn btn-attention confirm"><?= _t('ext.click_history.action.clear') ?></button>
 				</form>
 			</div>
 		</div>
