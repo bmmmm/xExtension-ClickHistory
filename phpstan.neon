@@ -1,0 +1,62 @@
+parameters:
+	phpVersion:
+		min: 80100	# PHP 8.1
+		max: 80499	# PHP 8.4
+	level: 10	# https://phpstan.org/user-guide/rule-levels
+	fileExtensions:
+		- php
+		- phtml
+	# Minz_Extension, Minz_ModelPdo, Minz_View, Minz_Request, FreshRSS_Auth and
+	# friends live in FreshRSS core, not in this repository. CI checks core out to
+	# .freshrss-core (see .github/workflows/ci.yml) so PHPStan can resolve them;
+	# core itself is scanned for class definitions but never analysed for errors
+	# of its own. Mirrors how github.com/FreshRSS/Extensions lints third-party
+	# extensions.
+	#
+	# That checkout is pinned to the oldest supported release rather than to the
+	# development branch, which turns the version requirement in the README from
+	# a claim into something the build checks: reach for an API that release does
+	# not have and this fails.
+	paths:
+		- .
+		- .freshrss-core
+	excludePaths:
+		analyse:
+			- .freshrss-core
+		analyseAndScan:
+			- .git/*?
+			- .claude/*?
+			- node_modules/*?
+			- tmp/*?
+			- vendor/*?
+	checkBenevolentUnionTypes: true
+	checkImplicitMixed: true
+	checkMissingOverrideMethodAttribute: true
+	checkTooWideReturnTypesInProtectedAndPublicMethods: true
+	reportAnyTypeWideningInVarTag: true
+	reportPossiblyNonexistentConstantArrayOffset: true
+	treatPhpDocTypesAsCertain: false
+	strictRules:
+		disallowedEmpty: false
+		disallowedLooseComparison: false
+		disallowedShortTernary: false
+		strictArrayFilter: true
+	exceptions:
+		check:
+			# Off for the same reason core switches it off in its own
+			# phpstan.dist.neon ("TODO pass maybe"): every checked exception this
+			# extension can propagate comes out of a core call — Minz_Log::error()
+			# throws Minz_PermissionDeniedException, instantiating a DAO throws
+			# Minz_PDOConnectionException — and core declares none of them. Listing
+			# them here would document core's internals from the outside and go
+			# stale with the next release, without changing any behaviour.
+			missingCheckedExceptionInThrows: false
+			# Still on: this one catches @throws tags that promise more than the
+			# code can actually raise, which is ours to get right.
+			tooWideThrowType: true
+		implicitThrows: false
+		checkedExceptionClasses:
+			- 'Minz_Exception'
+includes:
+	- vendor/phpstan/phpstan-deprecation-rules/rules.neon
+	- vendor/phpstan/phpstan-strict-rules/rules.neon

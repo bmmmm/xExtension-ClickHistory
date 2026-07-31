@@ -1,0 +1,20 @@
+{
+	"packageManager": "pnpm@11.13.0",
+	"name": "xextension-clickhistory",
+	"private": true,
+	"description": "Linting for the Click History FreshRSS extension",
+	"license": "AGPL-3.0",
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"preinstall": "node -e \"if (!(process.env.npm_config_user_agent || '').startsWith('pnpm')) { console.error('Use pnpm: https://pnpm.io/installation'); process.exit(1); }\"",
+		"eslint": "eslint ."
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.39.5",
+		"eslint": "^9.39.5",
+		"globals": "^17.8.0",
+		"neostandard": "^0.13.0"
+	}
+}

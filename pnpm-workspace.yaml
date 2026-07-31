@@ -1,0 +1,5 @@
+# A release that turns out to be compromised is usually yanked within hours, so
+# nothing newer than three days old is installed here.
+minimumReleaseAge: 4320
+# Build scripts stay off unless a dependency is deliberately added to this list.
+onlyBuiltDependencies: []

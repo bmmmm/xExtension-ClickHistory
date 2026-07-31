@@ -1,0 +1,26 @@
+{
+	"name": "bmmmm/xextension-clickhistory",
+	"description": "Dev tooling (PHPStan, PHP_CodeSniffer) for the Click History FreshRSS extension",
+	"type": "project",
+	"license": "AGPL-3.0",
+	"require": {
+		"php": ">=8.1"
+	},
+	"require-dev": {
+		"phpstan/phpstan": "^2",
+		"phpstan/phpstan-deprecation-rules": "^2",
+		"phpstan/phpstan-strict-rules": "^2",
+		"squizlabs/php_codesniffer": "^4"
+	},
+	"config": {
+		"platform": {
+			"php": "8.1"
+		},
+		"sort-packages": true
+	},
+	"scripts": {
+		"phpcs": "phpcs .",
+		"phpcbf": "phpcbf .",
+		"phpstan": "phpstan analyse"
+	}
+}

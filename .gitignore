@@ -1,0 +1,18 @@
+.DS_Store
+._*
+Thumbs.db
+
+node_modules/
+vendor/
+tmp/
+# pnpm-only (see the preinstall guard in package.json); npm writes its lockfile
+# before that guard ever runs, so it must not be able to land in a commit.
+package-lock.json
+yarn.lock
+# Checked out at CI/local-verification time only, see phpstan.neon.
+.freshrss-core/
+# Tooling scratch space (agent worktrees, local settings).
+.claude/
+# Local repo setup only. It points at the private forge and the local
+# credential store, neither of which belongs in a public mirror.
+scripts/
