@@ -24,6 +24,19 @@
 		'li.item > a.item-element.title[target="_blank"]',
 	].join(', ');
 
+	// Shown on the toolbar button until the global context arrives, and on an
+	// installation whose translations failed to load.
+	const FALLBACK_LABEL = 'Click history';
+
+	// A clock face with hands: the icon set core exposes through _i() has no
+	// history, clock or archive symbol, and inline SVG costs no extra request.
+	const ICON_PATH =
+		'M12,2A10,10 0 1 0 12,22 10,10 0 1 0 12,2z ' +
+		'M12,4A8,8 0 1 1 12,20 8,8 0 1 1 12,4z ' +
+		'M11,6h2v6h5v2h-7z';
+
+	const SVG_NS = 'http://www.w3.org/2000/svg';
+
 	function extensionVars() {
 		const vars = window.context && window.context.extensions;
 		return (vars && vars.click_history) || {};
@@ -117,8 +130,61 @@
 		// interrupt what the user was actually doing.
 	}
 
+	// The toolbar is the one part of this extension that reaches into core's
+	// markup: there is no hook for that row (NavEntries sits by the paging arrows
+	// at the bottom of the stream, MenuOtherEntry only in the header dropdown).
+	// If a future release renames .nav_menu or .group, the button quietly stops
+	// appearing — the menu entry, which needs no markup of core's, still works.
+	function addToolbarButton() {
+		const nav = document.querySelector('.nav_menu');
+		if (nav === null || nav.querySelector('.click-history-nav') !== null) {
+			return;
+		}
+		const vars = extensionVars();
+		if (!vars.index_url) {
+			return;
+		}
+		const label = vars.label || FALLBACK_LABEL;
+
+		const svg = document.createElementNS(SVG_NS, 'svg');
+		svg.setAttribute('viewBox', '0 0 24 24');
+		svg.setAttribute('width', '16');
+		svg.setAttribute('height', '16');
+		svg.setAttribute('aria-hidden', 'true');
+		svg.setAttribute('focusable', 'false');
+		const path = document.createElementNS(SVG_NS, 'path');
+		path.setAttribute('d', ICON_PATH);
+		path.setAttribute('fill', 'currentColor');
+		path.setAttribute('fill-rule', 'evenodd');
+		svg.appendChild(path);
+
+		const link = document.createElement('a');
+		link.className = 'btn';
+		link.href = vars.index_url;
+		link.title = label;
+		link.setAttribute('aria-label', label);
+		link.appendChild(svg);
+
+		const group = document.createElement('div');
+		group.className = 'group click-history-nav';
+		group.appendChild(link);
+
+		// Before the refresh button, which core keeps last in the row.
+		const refresh = nav.querySelector('#actualize');
+		const lastGroup = refresh === null ? null : refresh.closest('.group');
+		nav.insertBefore(group, lastGroup);
+	}
+
 	function init() {
 		const guard = createOncePerLoadGuard();
+
+		addToolbarButton();
+		// The toolbar is rebuilt when the view changes (normal/global/reader) and
+		// arrives late on a slow load, so one pass at startup is not enough.
+		new MutationObserver(addToolbarButton).observe(document.body, { childList: true, subtree: true });
+		// The label is the only string here, and it comes from the global context,
+		// which may land after this script does.
+		document.addEventListener('freshrss:globalContextLoaded', addToolbarButton);
 
 		// One delegated listener rather than a MutationObserver: articles loaded
 		// later need no preparation, since nothing is injected into them.

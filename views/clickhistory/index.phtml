@@ -1,6 +1,7 @@
 <?php
 	declare(strict_types=1);
 	/** @var ClickHistoryView $this */
+	$groupParams = $this->byCategory ? ['group' => 'category'] : [];
 ?>
 <main class="post content click-history">
 	<h1><?= _t('ext.click_history.title') ?></h1>
@@ -8,6 +9,20 @@
 	<?php if ($this->history === []) { ?>
 		<p class="alert alert-warn"><?= _t('ext.click_history.empty') ?></p>
 	<?php } else { ?>
+		<div class="click-history-toolbar">
+			<?php if ($this->byCategory) { ?>
+				<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index']) ?>"><?=
+					_t('ext.click_history.group.by_date') ?></a>
+			<?php } else { ?>
+				<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => ['group' => 'category']]) ?>"><?=
+					_t('ext.click_history.group.by_category') ?></a>
+			<?php } ?>
+			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $groupParams + ['format' => 'json']]) ?>"><?=
+				_t('ext.click_history.action.export_json') ?></a>
+			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $groupParams + ['format' => 'csv']]) ?>"><?=
+				_t('ext.click_history.action.export_csv') ?></a>
+		</div>
+
 		<?php $this->renderHelper('clickhistory/pagination'); ?>
 
 		<div class="table-wrapper scrollbar-thin">
@@ -16,18 +31,38 @@
 					<tr>
 						<th><?= _t('ext.click_history.columns.article') ?></th>
 						<th><?= _t('ext.click_history.columns.feed') ?></th>
+						<?php if (!$this->byCategory) { ?>
+							<th><?= _t('ext.click_history.columns.category') ?></th>
+						<?php } ?>
 						<th><?= _t('ext.click_history.columns.opened') ?></th>
 						<th><?= _t('ext.click_history.columns.actions') ?></th>
 					</tr>
 				</thead>
 				<tbody>
-				<?php foreach ($this->history as $item) {
-					// The stored URL came from a feed, and FreshRSS never checks its
-					// scheme on the way in. A row whose link is not plain http(s) is
-					// still worth showing — it is part of the history — but it is
-					// shown as text, because a `javascript:` href one click away is
-					// exactly what this page must not become.
-					$isWebLink = preg_match('%^https?://%i', $item['url']) === 1;
+				<?php
+					// Grouping is done here rather than in SQL: the rows already
+					// arrive sorted by category, so a heading is emitted whenever the
+					// name changes. A group that spans a page boundary simply gets its
+					// heading again on the next page.
+					$currentCategory = null;
+					$columnCount = $this->byCategory ? 4 : 5;
+					foreach ($this->history as $item) {
+						if ($this->byCategory && $item['category_name'] !== $currentCategory) {
+							$currentCategory = $item['category_name'];
+							?>
+							<tr class="click-history-group">
+								<th colspan="<?= $columnCount ?>"><?= $currentCategory === ''
+									? _t('ext.click_history.no_category')
+									: htmlspecialchars($currentCategory, ENT_NOQUOTES, 'UTF-8') ?></th>
+							</tr>
+							<?php
+						}
+						// The stored URL came from a feed, and FreshRSS never checks its
+						// scheme on the way in. A row whose link is not plain http(s) is
+						// still worth showing — it is part of the history — but it is
+						// shown as text, because a `javascript:` href one click away is
+						// exactly what this page must not become.
+						$isWebLink = preg_match('%^https?://%i', $item['url']) === 1;
 					?>
 					<tr>
 						<td class="click-history-title">
@@ -40,6 +75,11 @@
 							<?php } ?>
 						</td>
 						<td class="click-history-feed"><?= htmlspecialchars($item['feed_name'], ENT_NOQUOTES, 'UTF-8') ?></td>
+						<?php if (!$this->byCategory) { ?>
+							<td class="click-history-category"><?= $item['category_name'] === ''
+								? '<span class="click-history-none">' . _t('ext.click_history.no_category') . '</span>'
+								: htmlspecialchars($item['category_name'], ENT_NOQUOTES, 'UTF-8') ?></td>
+						<?php } ?>
 						<td class="click-history-date">
 							<time datetime="<?= timestampToMachineDate($item['clicked_at']) ?>"<?=
 								$item['first_clicked_at'] < $item['clicked_at']

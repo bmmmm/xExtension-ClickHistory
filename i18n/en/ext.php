@@ -8,13 +8,21 @@ return array(
 		'columns' => array(
 			'article' => 'Article',
 			'feed' => 'Feed',
+			'category' => 'Category',
 			'opened' => 'Last opened',
 			'actions' => 'Actions',
 		),
 		'first_opened' => 'First opened on %s',
+		'no_category' => 'No category',
+		'group' => array(
+			'by_category' => 'Group by category',
+			'by_date' => 'Sort by date',
+		),
 		'action' => array(
 			'delete' => 'Delete',
 			'clear' => 'Delete the whole history',
+			'export_json' => 'Download as JSON',
+			'export_csv' => 'Download as CSV',
 		),
 		'conf' => array(
 			'track_clicks' => 'Record opened articles',

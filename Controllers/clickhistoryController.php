@@ -12,10 +12,13 @@ declare(strict_types=1);
 final class ClickHistoryView extends FreshRSS_View {
 	/**
 	 * @var list<array{id_entry:string, url:string, title:string, feed_name:string,
-	 *     id_feed:int|null, clicked_at:int, first_clicked_at:int}>
+	 *     id_feed:int|null, category_name:string, id_category:int|null,
+	 *     clicked_at:int, first_clicked_at:int}>
 	 */
 	public array $history = [];
 	public int $total = 0;
+	public bool $byCategory = false;
+	public string $exportFormat = 'json';
 	/** @var array<string,mixed> */
 	public array $result = [];
 }
@@ -58,13 +61,36 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		// paramInt() yields 0 for a missing or non-numeric page, and a page past
 		// the end would otherwise show an empty table rather than the last page.
 		$currentPage = min(max(1, Minz_Request::paramInt('page')), $nbPage);
+		$byCategory = Minz_Request::paramString('group') === 'category';
 
-		$this->view->history = $dao->listEntries($pageSize, ($currentPage - 1) * $pageSize);
+		$this->view->history = $dao->listEntries($pageSize, ($currentPage - 1) * $pageSize, $byCategory);
 		$this->view->total = $total;
 		$this->view->currentPage = $currentPage;
 		$this->view->nbPage = $nbPage;
+		$this->view->byCategory = $byCategory;
 
 		FreshRSS_View::prependTitle(_t('ext.click_history.title') . ' · ');
+	}
+
+	/**
+	 * Downloads the whole history. A plain authenticated download rather than an
+	 * endpoint under /api/misc.php, because that one gates on
+	 * systemConf()->extensions_enabled and so cannot see a user extension at all.
+	 */
+	public function exportAction(): void {
+		$this->view->_layout(null);
+
+		$format = Minz_Request::paramString('format') === 'csv' ? 'csv' : 'json';
+		$rows = (new ClickHistoryDAO())->listAll(Minz_Request::paramString('group') === 'category');
+		$filename = 'click-history-' . date('Y-m-d') . '.' . $format;
+
+		header('Content-Type: ' . ($format === 'csv' ? 'text/csv; charset=UTF-8' : 'application/json; charset=UTF-8'));
+		// The filename is built here, not taken from the request, so it needs no
+		// escaping beyond the quotes it sits in.
+		header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+		$this->view->exportFormat = $format;
+		$this->view->history = $rows;
 	}
 
 	/**
@@ -105,6 +131,10 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		}
 
 		$feed = $entry->feed();
+		// The category is copied in like the feed name, rather than resolved from
+		// id_feed when the page is rendered: an entry has to keep grouping
+		// correctly after its feed — or the whole category — has been deleted.
+		$category = $feed?->category();
 		$ok = (new ClickHistoryDAO())->record(
 			$entry->id(),
 			// link(), title() and name() all return values that core prints into
@@ -116,6 +146,8 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			html_entity_decode($entry->title(), ENT_QUOTES, 'UTF-8'),
 			$feed === null ? '' : html_entity_decode($feed->name(), ENT_QUOTES, 'UTF-8'),
 			$feed?->id(),
+			$category === null ? '' : html_entity_decode($category->name(), ENT_QUOTES, 'UTF-8'),
+			$category?->id(),
 			time(),
 		);
 

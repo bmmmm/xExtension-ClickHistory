@@ -8,13 +8,21 @@ return array(
 		'columns' => array(
 			'article' => 'Artikel',
 			'feed' => 'Feed',
+			'category' => 'Kategorie',
 			'opened' => 'Zuletzt geöffnet',
 			'actions' => 'Aktionen',
 		),
 		'first_opened' => 'Zuerst geöffnet am %s',
+		'no_category' => 'Keine Kategorie',
+		'group' => array(
+			'by_category' => 'Nach Kategorie gruppieren',
+			'by_date' => 'Nach Datum sortieren',
+		),
 		'action' => array(
 			'delete' => 'Löschen',
 			'clear' => 'Gesamten Verlauf löschen',
+			'export_json' => 'Als JSON herunterladen',
+			'export_csv' => 'Als CSV herunterladen',
 		),
 		'conf' => array(
 			'track_clicks' => 'Geöffnete Artikel aufzeichnen',

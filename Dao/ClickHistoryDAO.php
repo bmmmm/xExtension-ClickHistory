@@ -35,7 +35,29 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 				return false;
 			}
 		}
+		if (!$this->addCategoryColumns()) {
+			return false;
+		}
 		self::$tableChecked = true;
+		return true;
+	}
+
+	/**
+	 * Brings a table created by 0.1.0 up to date. Deliberately not expressed as
+	 * `ADD COLUMN IF NOT EXISTS`: MySQL has no such clause (MariaDB does), so the
+	 * presence of the column is probed instead — a SELECT that fails means the
+	 * column is missing, which works the same on all three backends.
+	 */
+	private function addCategoryColumns(): bool {
+		if ($this->pdo->query('SELECT category_name FROM `_click_history` LIMIT 1') !== false) {
+			return true;
+		}
+		foreach ($this->addCategoryColumnsSql() as $sql) {
+			if ($this->pdo->exec($sql) === false) {
+				Minz_Log::error('ClickHistory: cannot add the category columns: ' . json_encode($this->pdo->errorInfo()));
+				return false;
+			}
+		}
 		return true;
 	}
 
@@ -45,14 +67,24 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	 * state as of the first click, which is what an archive should show even
 	 * after a feed has retitled the article.
 	 */
-	public function record(string $idEntry, string $url, string $title, string $feedName, ?int $idFeed, int $timestamp): bool {
+	public function record(
+		string $idEntry,
+		string $url,
+		string $title,
+		string $feedName,
+		?int $idFeed,
+		string $categoryName,
+		?int $idCategory,
+		int $timestamp
+	): bool {
 		if (!$this->ensureTableExists()) {
 			return false;
 		}
 
 		$sql = <<<'SQL'
-			INSERT INTO `_click_history` (id_entry, url, title, feed_name, id_feed, clicked_at, first_clicked_at)
-			VALUES (:id_entry, :url, :title, :feed_name, :id_feed, :clicked_at, :first_clicked_at)
+			INSERT INTO `_click_history`
+				(id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at)
+			VALUES (:id_entry, :url, :title, :feed_name, :id_feed, :category_name, :id_category, :clicked_at, :first_clicked_at)
 			SQL;
 		// The one real dialect difference. Both branches update nothing but the
 		// timestamp, so a second click cannot rewrite the archived values above.
@@ -72,6 +104,8 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			$stm->bindValue(':title', $title, PDO::PARAM_STR) &&
 			$stm->bindValue(':feed_name', $feedName, PDO::PARAM_STR) &&
 			$stm->bindValue(':id_feed', $idFeed, $idFeed === null ? PDO::PARAM_NULL : PDO::PARAM_INT) &&
+			$stm->bindValue(':category_name', $categoryName, PDO::PARAM_STR) &&
+			$stm->bindValue(':id_category', $idCategory, $idCategory === null ? PDO::PARAM_NULL : PDO::PARAM_INT) &&
 			$stm->bindValue(':clicked_at', $timestamp, PDO::PARAM_INT) &&
 			$stm->bindValue(':first_clicked_at', $timestamp, PDO::PARAM_INT) &&
 			$stm->execute()) {
@@ -84,12 +118,14 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	}
 
 	/**
-	 * One page of the history, most recently opened first.
+	 * One page of the history: by default most recently opened first, or grouped
+	 * by category with the newest first inside each group.
 	 *
 	 * @return list<array{id_entry:string, url:string, title:string, feed_name:string,
-	 *     id_feed:int|null, clicked_at:int, first_clicked_at:int}>
+	 *     id_feed:int|null, category_name:string, id_category:int|null,
+	 *     clicked_at:int, first_clicked_at:int}>
 	 */
-	public function listEntries(int $limit, int $offset): array {
+	public function listEntries(int $limit, int $offset, bool $byCategory = false): array {
 		if (!$this->ensureTableExists()) {
 			return [];
 		}
@@ -97,10 +133,13 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		// id_entry breaks the tie: two articles opened in the same second would
 		// otherwise be free to swap places between pages and appear twice or not
 		// at all. Entry ids are timestamp-derived, so this stays in click order.
-		$sql = <<<'SQL'
-			SELECT id_entry, url, title, feed_name, id_feed, clicked_at, first_clicked_at
+		$order = $byCategory
+			? 'ORDER BY category_name ASC, clicked_at DESC, id_entry DESC'
+			: 'ORDER BY clicked_at DESC, id_entry DESC';
+		$sql = <<<SQL
+			SELECT id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at
 			FROM `_click_history`
-			ORDER BY clicked_at DESC, id_entry DESC
+			{$order}
 			LIMIT :limit OFFSET :offset
 			SQL;
 
@@ -114,17 +153,56 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return [];
 		}
 
+		return $this->normalise($stm);
+	}
+
+	/**
+	 * The whole history, for the export. Deliberately not paginated: an export
+	 * that silently stopped at the first page would be worse than none.
+	 *
+	 * @return list<array{id_entry:string, url:string, title:string, feed_name:string,
+	 *     id_feed:int|null, category_name:string, id_category:int|null,
+	 *     clicked_at:int, first_clicked_at:int}>
+	 */
+	public function listAll(bool $byCategory = false): array {
+		if (!$this->ensureTableExists()) {
+			return [];
+		}
+		$order = $byCategory
+			? 'ORDER BY category_name ASC, clicked_at DESC, id_entry DESC'
+			: 'ORDER BY clicked_at DESC, id_entry DESC';
+		$stm = $this->pdo->query(<<<SQL
+			SELECT id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at
+			FROM `_click_history`
+			{$order}
+			SQL);
+		if ($stm === false) {
+			Minz_Log::error('ClickHistory: cannot export entries: ' . json_encode($this->pdo->errorInfo()));
+			return [];
+		}
+		return $this->normalise($stm);
+	}
+
+	/**
+	 * SQLite hands back integers where MySQL hands back strings for the same
+	 * columns, so callers get one shape either way.
+	 *
+	 * @return list<array{id_entry:string, url:string, title:string, feed_name:string,
+	 *     id_feed:int|null, category_name:string, id_category:int|null,
+	 *     clicked_at:int, first_clicked_at:int}>
+	 */
+	private function normalise(PDOStatement $stm): array {
 		$rows = [];
 		/** @var array<string,mixed> $row */
 		foreach ($stm->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
-			// SQLite hands back integers, MySQL hands back strings for the same
-			// columns, so the view gets one shape either way.
 			$rows[] = [
 				'id_entry' => is_scalar($row['id_entry'] ?? null) ? (string)$row['id_entry'] : '',
 				'url' => is_scalar($row['url'] ?? null) ? (string)$row['url'] : '',
 				'title' => is_scalar($row['title'] ?? null) ? (string)$row['title'] : '',
 				'feed_name' => is_scalar($row['feed_name'] ?? null) ? (string)$row['feed_name'] : '',
 				'id_feed' => is_numeric($row['id_feed'] ?? null) ? (int)$row['id_feed'] : null,
+				'category_name' => is_scalar($row['category_name'] ?? null) ? (string)$row['category_name'] : '',
+				'id_category' => is_numeric($row['id_category'] ?? null) ? (int)$row['id_category'] : null,
 				'clicked_at' => is_numeric($row['clicked_at'] ?? null) ? (int)$row['clicked_at'] : 0,
 				'first_clicked_at' => is_numeric($row['first_clicked_at'] ?? null) ? (int)$row['first_clicked_at'] : 0,
 			];
@@ -199,6 +277,8 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 							`title` TEXT NOT NULL,
 							`feed_name` VARCHAR(255) NOT NULL,
 							`id_feed` INT,
+							`category_name` VARCHAR(255) NOT NULL DEFAULT '',
+							`id_category` INT,
 							`clicked_at` BIGINT NOT NULL,
 							`first_clicked_at` BIGINT NOT NULL,
 							PRIMARY KEY (`id_entry`),
@@ -216,6 +296,8 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 							`title` TEXT NOT NULL,
 							`feed_name` TEXT NOT NULL,
 							`id_feed` INT,
+							`category_name` TEXT NOT NULL DEFAULT '',
+							`id_category` INT,
 							`clicked_at` BIGINT NOT NULL,
 							`first_clicked_at` BIGINT NOT NULL,
 							PRIMARY KEY (`id_entry`)
@@ -232,6 +314,8 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 							`title` TEXT NOT NULL,
 							`feed_name` TEXT NOT NULL,
 							`id_feed` INTEGER,
+							`category_name` TEXT NOT NULL DEFAULT '',
+							`id_category` INTEGER,
 							`clicked_at` INTEGER NOT NULL,
 							`first_clicked_at` INTEGER NOT NULL,
 							PRIMARY KEY (`id_entry`)
@@ -240,5 +324,22 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 					'CREATE INDEX IF NOT EXISTS `_click_history_clicked_at_index` ON `_click_history`(`clicked_at`)',
 				];
 		}
+	}
+
+	/**
+	 * Upgrades a table created before the category was recorded. A DEFAULT is
+	 * required rather than merely convenient: SQLite refuses to add a NOT NULL
+	 * column without one, and the rows already in the table have no category to
+	 * put there — the feed they came from may not even exist any more.
+	 *
+	 * @return list<string>
+	 */
+	private function addCategoryColumnsSql(): array {
+		$nameType = $this->pdo->dbType() === 'mysql' ? 'VARCHAR(255)' : 'TEXT';
+		$intType = $this->pdo->dbType() === 'sqlite' ? 'INTEGER' : 'INT';
+		return [
+			"ALTER TABLE `_click_history` ADD COLUMN `category_name` {$nameType} NOT NULL DEFAULT ''",
+			"ALTER TABLE `_click_history` ADD COLUMN `id_category` {$intType}",
+		];
 	}
 }

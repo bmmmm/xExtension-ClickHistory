@@ -1,0 +1,53 @@
+<?php
+	declare(strict_types=1);
+	/** @var ClickHistoryView $this */
+
+	// Timestamps are exported twice: the raw Unix value, because that is the one
+	// another tool can sort and compare, and an ISO-8601 string, because that is
+	// the one a person reading the file can.
+	if ($this->exportFormat === 'csv') {
+		$out = fopen('php://output', 'w');
+		if ($out !== false) {
+			// A BOM so that Excel opens the file as UTF-8 instead of guessing a
+			// local codepage and mangling every non-ASCII headline.
+			fwrite($out, "\xEF\xBB\xBF");
+			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso']);
+			foreach ($this->history as $item) {
+				fputcsv($out, [
+					$item['id_entry'],
+					$item['title'],
+					$item['url'],
+					$item['feed_name'],
+					$item['category_name'],
+					$item['clicked_at'],
+					date(DATE_ATOM, $item['clicked_at']),
+					$item['first_clicked_at'],
+					date(DATE_ATOM, $item['first_clicked_at']),
+				]);
+			}
+			fclose($out);
+		}
+		return;
+	}
+
+	$entries = [];
+	foreach ($this->history as $item) {
+		$entries[] = [
+			'id_entry' => $item['id_entry'],
+			'title' => $item['title'],
+			'url' => $item['url'],
+			'feed' => ['id' => $item['id_feed'], 'name' => $item['feed_name']],
+			'category' => ['id' => $item['id_category'], 'name' => $item['category_name']],
+			'clicked_at' => $item['clicked_at'],
+			'clicked_at_iso' => date(DATE_ATOM, $item['clicked_at']),
+			'first_clicked_at' => $item['first_clicked_at'],
+			'first_clicked_at_iso' => date(DATE_ATOM, $item['first_clicked_at']),
+		];
+	}
+
+	echo json_encode([
+		'generator' => 'xExtension-ClickHistory',
+		'exported_at' => date(DATE_ATOM),
+		'count' => count($entries),
+		'entries' => $entries,
+	], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

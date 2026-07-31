@@ -28,3 +28,28 @@
 .click-history-actions form {
 	margin: 0;
 }
+
+.click-history-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+/* A category heading inside the table body: it spans the row, so it must not
+   look like one of the data rows above and below it. */
+.click-history-group th {
+	padding-top: 1.2rem;
+	text-align: left;
+}
+
+.click-history-none {
+	opacity: 0.6;
+}
+
+/* The toolbar button the script inserts into core's nav bar. Sized to match the
+   icons core puts there rather than the text buttons. */
+.click-history-nav .btn {
+	display: inline-flex;
+	align-items: center;
+}

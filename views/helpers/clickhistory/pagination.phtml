@@ -8,8 +8,14 @@
 	// mirrors app/views/helpers/logs_pagination.phtml so it looks the same in
 	// every theme, and the strings are core's own, translated in every language
 	// FreshRSS ships.
-	$pageUrl = static fn(int $page): string =>
-		Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => ['page' => $page]]);
+	// The grouping travels with the page number, or paging would silently drop
+	// back to the chronological order halfway through.
+	$byCategory = $this->byCategory;
+	$pageUrl = static fn(int $page): string => Minz_Url::display([
+		'c' => 'clickhistory',
+		'a' => 'index',
+		'params' => $byCategory ? ['page' => $page, 'group' => 'category'] : ['page' => $page],
+	]);
 ?>
 <?php if ($this->nbPage > 1) { ?>
 <nav class="nav-pagination nav-list">
