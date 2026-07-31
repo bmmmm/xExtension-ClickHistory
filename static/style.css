@@ -1,0 +1,30 @@
+/* The history page reuses the core's table styling (.table-wrapper, .btn); what
+   is left is keeping a long headline or URL from deciding the column widths. */
+
+.click-history td {
+	vertical-align: top;
+}
+
+.click-history-title {
+	/* Titles and URLs have no spaces to break at in the worst case, and without
+	   this the table pushes the date and action columns off a narrow window. */
+	overflow-wrap: anywhere;
+}
+
+.click-history-title code {
+	display: block;
+	overflow-wrap: anywhere;
+	opacity: 0.7;
+}
+
+.click-history-date {
+	white-space: nowrap;
+}
+
+.click-history-actions {
+	width: 1%;	/* Shrink to the button: the title column takes what is left. */
+}
+
+.click-history-actions form {
+	margin: 0;
+}

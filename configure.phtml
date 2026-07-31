@@ -1,0 +1,33 @@
+<?php
+	declare(strict_types=1);
+	/** @var ClickHistoryExtension $this */
+	$settings = $this->settings();
+	[$pageSizeMin, $pageSizeMax] = $this->pageSizeRange();
+?>
+<form action="<?= _url('extension', 'configure', 'e', urlencode($this->getName())) ?>" method="post">
+	<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
+
+	<div class="form-group">
+		<label class="group-name" for="track_clicks"><?= _t('ext.click_history.conf.track_clicks') ?></label>
+		<div class="group-controls">
+			<input type="checkbox" name="track_clicks" id="track_clicks" value="1"<?= $settings['track_clicks'] ? ' checked="checked"' : '' ?> />
+			<p class="help"><?= _t('ext.click_history.conf.track_clicks_help') ?></p>
+		</div>
+	</div>
+
+	<div class="form-group">
+		<label class="group-name" for="page_size"><?= _t('ext.click_history.conf.page_size') ?></label>
+		<div class="group-controls">
+			<input type="number" name="page_size" id="page_size" min="<?= $pageSizeMin ?>" max="<?= $pageSizeMax ?>" step="10"
+				value="<?= $settings['page_size'] ?>" />
+			<p class="help"><?= _t('ext.click_history.conf.page_size_help', $pageSizeMin, $pageSizeMax) ?></p>
+		</div>
+	</div>
+
+	<div class="form-group form-actions">
+		<div class="group-controls">
+			<button type="submit" class="btn btn-important"><?= _t('gen.action.submit') ?></button>
+			<button type="reset" class="btn"><?= _t('gen.action.cancel') ?></button>
+		</div>
+	</div>
+</form>

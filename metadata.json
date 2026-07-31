@@ -1,0 +1,8 @@
+{
+	"name": "Click History",
+	"author": "bmmmm",
+	"description": "Keeps a history of the article links you actually opened, with title and feed, on a page of its own.",
+	"version": "0.1.0",
+	"entrypoint": "ClickHistory",
+	"type": "user"
+}

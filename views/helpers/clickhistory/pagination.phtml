@@ -1,0 +1,57 @@
+<?php
+	declare(strict_types=1);
+	/** @var ClickHistoryView $this */
+
+	// Rebuilt by hand rather than through Minz_Paginator: that class loads its
+	// view from APP_PATH . '/views/helpers/', which an extension cannot put a
+	// file into, and it paginates in memory over the full result set. The markup
+	// mirrors app/views/helpers/logs_pagination.phtml so it looks the same in
+	// every theme, and the strings are core's own, translated in every language
+	// FreshRSS ships.
+	$pageUrl = static fn(int $page): string =>
+		Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => ['page' => $page]]);
+?>
+<?php if ($this->nbPage > 1) { ?>
+<nav class="nav-pagination nav-list">
+	<div class="pagination-wrapper">
+		<ul class="pagination">
+			<li class="item pager-first">
+				<a href="<?= $pageUrl(1) ?>">« <?= _t('conf.logs.pagination.first') ?></a>
+			</li>
+
+			<li class="item pager-previous">
+				<?php if ($this->currentPage > 1) { ?>
+				<a href="<?= $pageUrl($this->currentPage - 1) ?>">‹ <?= _t('conf.logs.pagination.previous') ?></a>
+				<?php } ?>
+			</li>
+
+			<?php if ($this->currentPage - 2 > 1) { ?>
+			<li class="item">…</li>
+			<?php } ?>
+
+			<?php for ($i = $this->currentPage - 2; $i <= $this->currentPage + 2; $i++) {
+				if ($i > 0 && $i <= $this->nbPage) {
+					$active = $i === $this->currentPage; ?>
+					<li class="item<?= $active ? ' active' : '' ?>">
+						<a href="<?= $pageUrl($i) ?>" aria-current="<?= $active ? 'true' : 'false' ?>"><?= $i ?></a>
+					</li>
+				<?php }
+			} ?>
+
+			<?php if ($this->nbPage > $this->currentPage + 2) { ?>
+			<li class="item">…</li>
+			<?php } ?>
+
+			<li class="item pager-next">
+				<?php if ($this->currentPage < $this->nbPage) { ?>
+				<a href="<?= $pageUrl($this->currentPage + 1) ?>"><?= _t('conf.logs.pagination.next') ?> ›</a>
+				<?php } ?>
+			</li>
+
+			<li class="item pager-last">
+				<a href="<?= $pageUrl($this->nbPage) ?>"><?= _t('conf.logs.pagination.last') ?> »</a>
+			</li>
+		</ul>
+	</div>
+</nav>
+<?php } ?>

@@ -1,0 +1,78 @@
+<?php
+	declare(strict_types=1);
+	/** @var ClickHistoryView $this */
+?>
+<main class="post content click-history">
+	<h1><?= _t('ext.click_history.title') ?></h1>
+
+	<?php if ($this->history === []) { ?>
+		<p class="alert alert-warn"><?= _t('ext.click_history.empty') ?></p>
+	<?php } else { ?>
+		<?php $this->renderHelper('clickhistory/pagination'); ?>
+
+		<div class="table-wrapper scrollbar-thin">
+			<table id="click-history-list">
+				<thead>
+					<tr>
+						<th><?= _t('ext.click_history.columns.article') ?></th>
+						<th><?= _t('ext.click_history.columns.feed') ?></th>
+						<th><?= _t('ext.click_history.columns.opened') ?></th>
+						<th><?= _t('ext.click_history.columns.actions') ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php foreach ($this->history as $item) {
+					// The stored URL came from a feed, and FreshRSS never checks its
+					// scheme on the way in. A row whose link is not plain http(s) is
+					// still worth showing — it is part of the history — but it is
+					// shown as text, because a `javascript:` href one click away is
+					// exactly what this page must not become.
+					$isWebLink = preg_match('%^https?://%i', $item['url']) === 1;
+					?>
+					<tr>
+						<td class="click-history-title">
+							<?php if ($isWebLink) { ?>
+								<a target="_blank" rel="noreferrer" href="<?= htmlspecialchars($item['url'], ENT_COMPAT, 'UTF-8') ?>"><?=
+									htmlspecialchars($item['title'], ENT_NOQUOTES, 'UTF-8') ?></a>
+							<?php } else { ?>
+								<?= htmlspecialchars($item['title'], ENT_NOQUOTES, 'UTF-8') ?>
+								<code><?= htmlspecialchars($item['url'], ENT_NOQUOTES, 'UTF-8') ?></code>
+							<?php } ?>
+						</td>
+						<td class="click-history-feed"><?= htmlspecialchars($item['feed_name'], ENT_NOQUOTES, 'UTF-8') ?></td>
+						<td class="click-history-date">
+							<time datetime="<?= timestampToMachineDate($item['clicked_at']) ?>"<?=
+								$item['first_clicked_at'] < $item['clicked_at']
+									? ' title="' . htmlspecialchars(
+										_t('ext.click_history.first_opened', timestamptodate($item['first_clicked_at'])),
+										ENT_COMPAT, 'UTF-8'
+									) . '"'
+									: '' ?>><?= timestamptodate($item['clicked_at']) ?></time>
+						</td>
+						<td class="click-history-actions">
+							<form method="post" action="<?= _url('clickhistory', 'delete') ?>">
+								<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
+								<input type="hidden" name="id" value="<?= $item['id_entry'] ?>" />
+								<button type="submit" class="btn btn-attention confirm"><?= _t('ext.click_history.action.delete') ?></button>
+							</form>
+						</td>
+					</tr>
+				<?php } ?>
+				</tbody>
+			</table>
+		</div>
+
+		<?php $this->renderHelper('clickhistory/pagination'); ?>
+
+		<div class="form-group form-actions">
+			<div class="group-controls">
+				<form method="post" action="<?= _url('clickhistory', 'clear') ?>">
+					<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
+					<button type="submit" class="btn btn-attention confirm"
+						data-str-confirm="<?= htmlspecialchars(_t('ext.click_history.action.clear_confirm'), ENT_COMPAT, 'UTF-8') ?>"><?=
+						_t('ext.click_history.action.clear') ?></button>
+				</form>
+			</div>
+		</div>
+	<?php } ?>
+</main>
