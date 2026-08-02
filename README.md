@@ -19,8 +19,13 @@ This extension records that one gesture and nothing else.
 * Records a click on an article's own link — the headline in the list, the
   headline of an expanded article, and the link icon in the footer — plus
   middle-clicks and the core's <kbd>go to website</kbd> shortcut.
-* Shows the collection under **Click history** in the header menu: headline,
-  feed, when it was last opened, one page at a time.
+* Shows the collection under **Click history**: headline, feed, category, when
+  it was last opened, one page at a time. Reachable from the clock icon in the
+  toolbar and from the header menu.
+* Groups by category on request, or stays in plain chronological order.
+* Downloads the whole history as **JSON** or **CSV** — everything, not just the
+  page on screen. Timestamps are written twice, as a Unix value for whatever
+  reads the file and as ISO-8601 for whoever opens it.
 * Keeps one entry per article. Opening the same article again moves its
   timestamp forward instead of adding a second row; the first time is kept and
   shown as a tooltip on the date.
@@ -29,8 +34,10 @@ This extension records that one gesture and nothing else.
   specific header and footer elements that carry the article link, so a link in
   the body cannot match one of them.
 * Entries outlive the article. FreshRSS purges old articles on a schedule; the
-  headline, URL and feed name are copied into the extension's own table at the
-  moment of the click, so the history survives that and stays clickable.
+  headline, URL, feed name and category are copied into the extension's own
+  table at the moment of the click, so the history survives that and stays
+  clickable — and stays grouped correctly even after the feed or the whole
+  category has been deleted.
 
 It is an archive, not a to-read list: there is no done state and no workflow.
 Entries stay until you delete them, one at a time or all at once.
@@ -56,6 +63,16 @@ that release, so this is a checked property rather than a claim.
 Enabling it creates one table (`click_history`, with your installation's usual
 prefix). Because this is a *user* extension, each user gets their own — nobody
 sees anyone else's history.
+
+Upgrading from 0.1.0 adds two columns for the category on first use; existing
+entries keep their data and show up under *No category*, since the category was
+not recorded when they were made.
+
+There is no machine API. FreshRSS' extension API endpoint (`/api/misc.php`)
+checks `systemConf()->extensions_enabled` and therefore cannot see a user
+extension at all — offering one would mean making this a *system* extension,
+which would move the on/off switch from each user to the administrator. The
+export is a plain authenticated download instead.
 
 ## Settings
 
@@ -102,6 +119,15 @@ A feed decides what an article's link is, so that link is untrusted input.
 * **Requests are protected against CSRF by FreshRSS itself**: it rejects any
   POST without a valid token before a controller is reached, and extensions are
   not on its exemption list.
+
+## One dependency on core's markup
+
+The clock button in the toolbar is inserted by the extension's own script,
+because no hook covers that row — `NavEntries` renders by the paging arrows at
+the bottom of the stream, `MenuOtherEntry` only inside the header dropdown. If a
+future FreshRSS release renames `.nav_menu` or `.group`, that button quietly
+stops appearing. Nothing else breaks: the menu entry needs no markup of core's,
+so the page stays reachable through it.
 
 ## Development
 
