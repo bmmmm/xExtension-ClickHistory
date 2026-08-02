@@ -150,6 +150,20 @@ git clone --depth 1 --branch 1.29.0 https://github.com/FreshRSS/FreshRSS .freshr
 vendor/bin/phpstan analyse
 ```
 
+Without PHP installed locally, the same checks run in a container on the exact
+version CI uses, which is also the floor the extension claims to support:
+
+```sh
+docker run --rm -v "$PWD:/app" -w /app -e COMPOSER_HOME=/tmp/composer \
+  composer:2 install --prefer-dist --no-progress --no-interaction
+
+docker run --rm -v "$PWD:/app" -w /app php:8.1-cli sh -c '
+  find . \( -path ./vendor -o -path ./node_modules -o -path ./.freshrss-core \) -prune -o \
+    \( -name "*.php" -o -name "*.phtml" \) -print0 | xargs -0 -n1 php -l
+  vendor/bin/phpcs .
+  php -d memory_limit=1G vendor/bin/phpstan analyse --no-progress'
+```
+
 ## Translations
 
 English and German are included. Adding a language only means adding an
