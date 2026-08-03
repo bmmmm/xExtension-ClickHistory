@@ -1,0 +1,36 @@
+<?php
+	declare(strict_types=1);
+	/** @var ClickHistoryView $this */
+
+	// The counts come from the whole table, not from the current filter, so they
+	// stay put while switching between them — a number that changed depending on
+	// what was selected would be useless for deciding where to go next.
+	//
+	// "All" first and selected by default: the page has always shown the complete
+	// archive, and quietly hiding most of it behind a filter would take away what
+	// the extension is for. The unrated count is what invites triage instead.
+	// A list of pairs rather than a status-keyed map: PHP casts a null array key to
+	// '', so the "all" entry would never match $this->status and could not be shown
+	// as the selected one.
+	$labels = ClickHistoryExtension::statusLabels();
+	$total = array_sum($this->statusCounts);
+	$filters = [[null, _t('ext.click_history.filter.all') . ' (' . $total . ')']];
+	foreach (ClickHistoryDAO::STATUSES as $status) {
+		$filters[] = [$status, ($labels[$status] ?? $status)
+			. ' (' . ($this->statusCounts[$status] ?? 0) . ')'];
+	}
+
+	// The grouping survives a change of filter; the page number cannot, since a
+	// different filter has a different number of pages.
+	$groupParams = $this->byCategory ? ['group' => 'category'] : [];
+?>
+<nav class="click-history-filters">
+	<?php foreach ($filters as [$status, $label]) {
+		$active = $this->status === $status;
+		$params = $status === null ? $groupParams : $groupParams + ['status' => $status];
+	?>
+	<a class="btn<?= $active ? ' active' : '' ?>" aria-current="<?= $active ? 'true' : 'false' ?>"
+		href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => $params]) ?>"><?=
+		htmlspecialchars($label, ENT_NOQUOTES, 'UTF-8') ?></a>
+	<?php } ?>
+</nav>

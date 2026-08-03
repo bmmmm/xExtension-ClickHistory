@@ -7,6 +7,7 @@ final class ClickHistoryExtension extends Minz_Extension {
 	private const DEFAULTS = [
 		'track_clicks' => true,
 		'page_size' => 50,
+		'default_status' => ClickHistoryDAO::STATUS_UNRATED,
 	];
 
 	private const PAGE_SIZE_MIN = 10;
@@ -60,6 +61,9 @@ final class ClickHistoryExtension extends Minz_Extension {
 		$this->setUserConfigurationValue('page_size', self::clampInt(
 			Minz_Request::paramIntNull('page_size'), self::PAGE_SIZE_MIN, self::PAGE_SIZE_MAX, $current['page_size'],
 		));
+		$submitted = Minz_Request::paramString('default_status');
+		$this->setUserConfigurationValue('default_status', in_array($submitted, ClickHistoryDAO::STATUSES, true)
+			? $submitted : $current['default_status']);
 
 		Minz_Request::good(_t('feedback.conf.updated'), [
 			'c' => 'extension', 'a' => 'configure', 'params' => ['e' => urlencode($this->getName())],
@@ -139,21 +143,50 @@ final class ClickHistoryExtension extends Minz_Extension {
 	 * The stored settings, validated. Values written by an earlier version or by
 	 * hand are corrected here too, so the view and the JS context can trust them.
 	 *
-	 * @return array{track_clicks:bool, page_size:int}
+	 * @return array{track_clicks:bool, page_size:int, default_status:string}
 	 */
 	public function settings(): array {
+		$status = $this->getUserConfigurationString('default_status');
 		return [
 			'track_clicks' => $this->getUserConfigurationBool('track_clicks') ?? self::DEFAULTS['track_clicks'],
 			'page_size' => self::clampInt(
 				$this->getUserConfigurationInt('page_size'),
 				self::PAGE_SIZE_MIN, self::PAGE_SIZE_MAX, self::DEFAULTS['page_size'],
 			),
+			'default_status' => in_array($status, ClickHistoryDAO::STATUSES, true)
+				? $status : self::DEFAULTS['default_status'],
 		];
 	}
 
 	/** @return array{int, int} */
 	public function pageSizeRange(): array {
 		return [self::PAGE_SIZE_MIN, self::PAGE_SIZE_MAX];
+	}
+
+	/**
+	 * The name of each triage state, and the tooltip for the button that sets it.
+	 *
+	 * Spelled out rather than built from the constant with `'…status.' . $status`:
+	 * a key assembled at runtime cannot be found by the check that every string
+	 * the extension asks for exists in every language (.github/workflows/ci.yml),
+	 * so a missing translation would only show up as the raw key on the page.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function statusLabels(): array {
+		return [
+			ClickHistoryDAO::STATUS_UNRATED => _t('ext.click_history.status.unrated'),
+			ClickHistoryDAO::STATUS_GOOD => _t('ext.click_history.status.good'),
+			ClickHistoryDAO::STATUS_DROPPED => _t('ext.click_history.status.dropped'),
+		];
+	}
+
+	/** @return array<string,string> */
+	public static function rateTitles(): array {
+		return [
+			ClickHistoryDAO::STATUS_GOOD => _t('ext.click_history.rate.good'),
+			ClickHistoryDAO::STATUS_DROPPED => _t('ext.click_history.rate.dropped'),
+		];
 	}
 
 	/** A missing value falls back to $fallback; one out of range is pulled to the nearest bound. */

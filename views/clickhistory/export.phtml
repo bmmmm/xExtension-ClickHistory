@@ -11,7 +11,7 @@
 			// A BOM so that Excel opens the file as UTF-8 instead of guessing a
 			// local codepage and mangling every non-ASCII headline.
 			fwrite($out, "\xEF\xBB\xBF");
-			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso']);
+			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'status', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso']);
 			foreach ($this->history as $item) {
 				fputcsv($out, [
 					$item['id_entry'],
@@ -19,6 +19,7 @@
 					$item['url'],
 					$item['feed_name'],
 					$item['category_name'],
+					$item['status'],
 					$item['clicked_at'],
 					date(DATE_ATOM, $item['clicked_at']),
 					$item['first_clicked_at'],
@@ -38,6 +39,7 @@
 			'url' => $item['url'],
 			'feed' => ['id' => $item['id_feed'], 'name' => $item['feed_name']],
 			'category' => ['id' => $item['id_category'], 'name' => $item['category_name']],
+			'status' => $item['status'],
 			'clicked_at' => $item['clicked_at'],
 			'clicked_at_iso' => date(DATE_ATOM, $item['clicked_at']),
 			'first_clicked_at' => $item['first_clicked_at'],

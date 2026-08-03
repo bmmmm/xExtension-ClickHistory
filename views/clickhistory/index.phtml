@@ -1,7 +1,16 @@
 <?php
 	declare(strict_types=1);
 	/** @var ClickHistoryView $this */
-	$groupParams = $this->byCategory ? ['group' => 'category'] : [];
+	// Every link on this page keeps the grouping and the filter the user is under:
+	// dropping either halfway through would silently change what they are looking
+	// at. array_filter removes whichever of the two is not set.
+	$viewParams = array_filter([
+		'group' => $this->byCategory ? 'category' : null,
+		'status' => $this->status,
+	], static fn(?string $value): bool => $value !== null);
+	$statusParams = $this->status === null ? [] : ['status' => $this->status];
+	$statusLabels = ClickHistoryExtension::statusLabels();
+	$rateTitles = ClickHistoryExtension::rateTitles();
 
 	// Before <main>, where the stream views put core's own bar, and outside the
 	// empty-history branch below: a page with nothing on it is the one a user most
@@ -11,20 +20,29 @@
 <main class="post content click-history">
 	<h1><?= _t('ext.click_history.title') ?></h1>
 
+	<?php
+		// Outside the branch below on purpose: a filter that matches nothing would
+		// otherwise be a dead end, with no way of getting back to a state that has
+		// rows in it.
+		$this->renderHelper('clickhistory/filters');
+	?>
+
 	<?php if ($this->history === []) { ?>
-		<p class="alert alert-warn"><?= _t('ext.click_history.empty') ?></p>
+		<p class="alert alert-warn"><?= $this->status === null
+			? _t('ext.click_history.empty')
+			: _t('ext.click_history.empty_filtered') ?></p>
 	<?php } else { ?>
 		<div class="click-history-toolbar">
 			<?php if ($this->byCategory) { ?>
-				<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index']) ?>"><?=
+				<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => $statusParams]) ?>"><?=
 					_t('ext.click_history.group.by_date') ?></a>
 			<?php } else { ?>
-				<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => ['group' => 'category']]) ?>"><?=
+				<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => $statusParams + ['group' => 'category']]) ?>"><?=
 					_t('ext.click_history.group.by_category') ?></a>
 			<?php } ?>
-			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $groupParams + ['format' => 'json']]) ?>"><?=
+			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $viewParams + ['format' => 'json']]) ?>"><?=
 				_t('ext.click_history.action.export_json') ?></a>
-			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $groupParams + ['format' => 'csv']]) ?>"><?=
+			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $viewParams + ['format' => 'csv']]) ?>"><?=
 				_t('ext.click_history.action.export_csv') ?></a>
 		</div>
 
@@ -95,6 +113,38 @@
 									: '' ?>><?= timestamptodate($item['clicked_at']) ?></time>
 						</td>
 						<td class="click-history-actions">
+							<form method="post" action="<?= _url('clickhistory', 'rate') ?>">
+								<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
+								<input type="hidden" name="id" value="<?= $item['id_entry'] ?>" />
+								<?php
+									// The page the judgement is made on travels along, so the
+									// answer can come back to it.
+									foreach ($viewParams as $name => $value) {
+										echo '<input type="hidden" name="', $name, '" value="',
+											htmlspecialchars($value, ENT_COMPAT, 'UTF-8'), '" />';
+									}
+									if ($this->currentPage > 1) {
+										echo '<input type="hidden" name="page" value="', $this->currentPage, '" />';
+									}
+									// Two buttons rather than three: pressing the state a row is
+									// already in takes it back to unrated, which is what a user
+									// reaching for the highlighted button means by it.
+									foreach ([ClickHistoryDAO::STATUS_GOOD, ClickHistoryDAO::STATUS_DROPPED] as $status) {
+										$isCurrent = $item['status'] === $status;
+										$title = $isCurrent
+											? _t('ext.click_history.rate.undo')
+											: ($rateTitles[$status] ?? '');
+										?>
+										<button type="submit" name="rate"
+											value="<?= $isCurrent ? ClickHistoryDAO::STATUS_UNRATED : $status ?>"
+											class="btn<?= $isCurrent ? ' active' : '' ?>"
+											aria-pressed="<?= $isCurrent ? 'true' : 'false' ?>"
+											title="<?= htmlspecialchars($title, ENT_COMPAT, 'UTF-8') ?>"><?=
+											htmlspecialchars($statusLabels[$status] ?? $status, ENT_NOQUOTES, 'UTF-8') ?></button>
+										<?php
+									}
+								?>
+							</form>
 							<form method="post" action="<?= _url('clickhistory', 'delete') ?>">
 								<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
 								<input type="hidden" name="id" value="<?= $item['id_entry'] ?>" />

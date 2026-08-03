@@ -23,6 +23,13 @@ This extension records that one gesture and nothing else.
   it was last opened, one page at a time. Reachable from the clock icon in the
   toolbar and from the header menu.
 * Groups by category on request, or stays in plain chronological order.
+* Lets you say afterwards whether an article was worth it: **Good**, **Dropped**,
+  or left **Unrated**. Filter links across the top switch between those states
+  and carry a count each, so the unrated pile is visible without going looking
+  for it. Pressing the state a row is already in takes it back to unrated.
+* Keeps a dropped entry rather than removing it: it only leaves the default view.
+  That is on purpose — "8 of 87 from this feed were worth reading" needs the 87.
+  Removing an entry is what the delete button is for.
 * Downloads the whole history as **JSON** or **CSV** — everything, not just the
   page on screen. Timestamps are written twice, as a Unix value for whatever
   reads the file and as ISO-8601 for whoever opens it.
@@ -39,8 +46,9 @@ This extension records that one gesture and nothing else.
   clickable — and stays grouped correctly even after the feed or the whole
   category has been deleted.
 
-It is an archive, not a to-read list: there is no done state and no workflow.
-Entries stay until you delete them, one at a time or all at once.
+It is an archive first: the complete list is what you see by default, and the
+ratings sit on top of it rather than gating it. Entries stay until you delete
+them, one at a time or all at once — a judgement never removes anything.
 
 ## What it cannot record
 
@@ -64,9 +72,13 @@ Enabling it creates one table (`click_history`, with your installation's usual
 prefix). Because this is a *user* extension, each user gets their own — nobody
 sees anyone else's history.
 
-Upgrading from 0.1.0 adds two columns for the category on first use; existing
-entries keep their data and show up under *No category*, since the category was
-not recorded when they were made.
+Upgrading adds the columns a newer version needs on first use, one probe per
+version, and existing entries keep their data: those from before 0.2.0 show up
+under *No category*, and everything recorded before 0.3.0 counts as *Unrated* —
+in both cases because the information did not exist when the click happened. The
+upgrade statements are exercised against SQLite in CI (`tests/schema.php`), since
+this path runs exactly once per installation and a broken one would be noticed
+only by the data it lost.
 
 There is no machine API. FreshRSS' extension API endpoint (`/api/misc.php`)
 checks `systemConf()->extensions_enabled` and therefore cannot see a user
@@ -82,6 +94,7 @@ Under *Configuration → Extensions → Click History*:
 |---|---|---|
 | Record opened articles | on | While off, nothing is recorded and the browser sends no requests. The history that already exists is kept. |
 | Entries per page | 50 | Between 10 and 500. |
+| State of a newly opened article | Unrated | What a click leaves behind until you judge it. *Dropped* makes the history a list you promote entries onto instead of one you weed; it still records every click, so the counts stay honest. To record nothing at all, use the first setting — not this one. |
 
 There is deliberately no retention setting: the history is kept until you delete
 it. Deleting is manual, per entry or all at once.
@@ -134,6 +147,9 @@ so the page stays reachable through it.
 ```sh
 # JavaScript tests (click detection and the once-per-load guard)
 node --test tests/*.test.js
+
+# Schema upgrade and upsert, against real SQLite
+php tests/schema.php
 
 # JavaScript style (ESLint, aligned with FreshRSS core's own eslint.config.js)
 pnpm install

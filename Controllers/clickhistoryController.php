@@ -13,11 +13,15 @@ final class ClickHistoryView extends FreshRSS_View {
 	/**
 	 * @var list<array{id_entry:string, url:string, title:string, feed_name:string,
 	 *     id_feed:int|null, category_name:string, id_category:int|null,
-	 *     clicked_at:int, first_clicked_at:int}>
+	 *     clicked_at:int, first_clicked_at:int, status:string}>
 	 */
 	public array $history = [];
 	public int $total = 0;
 	public bool $byCategory = false;
+	/** The triage state being shown, or null for all of them. */
+	public ?string $status = null;
+	/** @var array<string,int> */
+	public array $statusCounts = [];
 	public string $exportFormat = 'json';
 	/** @var array<string,mixed> */
 	public array $result = [];
@@ -56,20 +60,56 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 	public function indexAction(): void {
 		$dao = new ClickHistoryDAO();
 		$pageSize = $this->settings()['page_size'];
-		$total = $dao->count();
+		$status = self::requestedStatus();
+		// Counted with the same filter the rows are listed with, or the last page
+		// would come out empty.
+		$total = $dao->count($status);
 		$nbPage = max(1, (int)ceil($total / $pageSize));
 		// paramInt() yields 0 for a missing or non-numeric page, and a page past
 		// the end would otherwise show an empty table rather than the last page.
 		$currentPage = min(max(1, Minz_Request::paramInt('page')), $nbPage);
 		$byCategory = Minz_Request::paramString('group') === 'category';
 
-		$this->view->history = $dao->listEntries($pageSize, ($currentPage - 1) * $pageSize, $byCategory);
+		$this->view->history = $dao->listEntries($pageSize, ($currentPage - 1) * $pageSize, $byCategory, $status);
 		$this->view->total = $total;
 		$this->view->currentPage = $currentPage;
 		$this->view->nbPage = $nbPage;
 		$this->view->byCategory = $byCategory;
+		$this->view->status = $status;
+		$this->view->statusCounts = $dao->countByStatus();
 
 		FreshRSS_View::prependTitle(_t('ext.click_history.title') . ' · ');
+	}
+
+	/**
+	 * Records a judgement about an article. The status is whitelisted here as well
+	 * as in the DAO: this is a plain form post, so the value arrives from the
+	 * client like any other.
+	 */
+	public function rateAction(): void {
+		if (!Minz_Request::isPost()) {
+			Minz_Error::error(405);
+			return;
+		}
+		// `rate` is the judgement being made; `status` stays the filter the page is
+		// under, so that both can travel in the same form.
+		$id = Minz_Request::paramString('id');
+		$rate = Minz_Request::paramString('rate');
+		if (ctype_digit($id) && in_array($rate, ClickHistoryDAO::STATUSES, true)) {
+			(new ClickHistoryDAO())->setStatus($id, $rate);
+		}
+
+		$filter = self::requestedStatus();
+		$params = array_filter([
+			'status' => $filter,
+			'group' => Minz_Request::paramString('group') === 'category' ? 'category' : null,
+			// Back to the page the judgement was made on, unlike after a deletion.
+			// With a filter active that does not hold: the row has just left the
+			// list and everything behind it moved up, so the old page number points
+			// at something else and the first page is the only honest answer.
+			'page' => $filter === null ? (Minz_Request::paramInt('page') ?: null) : null,
+		], static fn(string|int|null $value): bool => $value !== null);
+		Minz_Request::forward(['c' => 'clickhistory', 'a' => 'index', 'params' => $params], true);
 	}
 
 	/**
@@ -81,7 +121,10 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		$this->view->_layout(null);
 
 		$format = Minz_Request::paramString('format') === 'csv' ? 'csv' : 'json';
-		$rows = (new ClickHistoryDAO())->listAll(Minz_Request::paramString('group') === 'category');
+		$rows = (new ClickHistoryDAO())->listAll(
+			Minz_Request::paramString('group') === 'category',
+			self::requestedStatus(),
+		);
 		$filename = 'click-history-' . date('Y-m-d') . '.' . $format;
 
 		header('Content-Type: ' . ($format === 'csv' ? 'text/csv; charset=UTF-8' : 'application/json; charset=UTF-8'));
@@ -149,6 +192,9 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			$category === null ? '' : html_entity_decode($category->name(), ENT_QUOTES, 'UTF-8'),
 			$category?->id(),
 			time(),
+			// Only ever used for a row that does not exist yet: the upsert leaves the
+			// status of an already-judged article alone.
+			$this->settings()['default_status'],
 		);
 
 		if (!$ok) {
@@ -198,12 +244,24 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		Minz_Request::forward(['c' => 'clickhistory', 'a' => 'index'], true);
 	}
 
-	/** @return array{track_clicks:bool, page_size:int} */
+	/**
+	 * The triage state the request asks to be shown, or null for all of them —
+	 * which is also what an unknown value falls back to, so a hand-edited URL
+	 * cannot produce an empty page.
+	 */
+	private static function requestedStatus(): ?string {
+		$status = Minz_Request::paramString('status');
+		return in_array($status, ClickHistoryDAO::STATUSES, true) ? $status : null;
+	}
+
+	/** @return array{track_clicks:bool, page_size:int, default_status:string} */
 	private function settings(): array {
 		$extension = ClickHistoryExtension::instance();
 		// The controller is only reachable while the extension is enabled, so the
 		// null branch is unreachable in practice; the defaults keep the page
 		// working rather than fataling if that ever stops being true.
-		return $extension === null ? ['track_clicks' => true, 'page_size' => 50] : $extension->settings();
+		return $extension === null
+			? ['track_clicks' => true, 'page_size' => 50, 'default_status' => ClickHistoryDAO::STATUS_UNRATED]
+			: $extension->settings();
 	}
 }

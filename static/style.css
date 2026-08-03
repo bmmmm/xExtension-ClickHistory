@@ -27,9 +27,12 @@
 
 .click-history-actions form {
 	margin: 0;
+	display: inline-flex;
+	gap: 0.25rem;
 }
 
-.click-history-toolbar {
+.click-history-toolbar,
+.click-history-filters {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;

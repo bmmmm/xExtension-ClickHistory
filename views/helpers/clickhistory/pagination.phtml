@@ -8,13 +8,17 @@
 	// mirrors app/views/helpers/logs_pagination.phtml so it looks the same in
 	// every theme, and the strings are core's own, translated in every language
 	// FreshRSS ships.
-	// The grouping travels with the page number, or paging would silently drop
-	// back to the chronological order halfway through.
-	$byCategory = $this->byCategory;
+	// The grouping and the filter travel with the page number, or paging would
+	// silently drop back to the chronological order — or to the whole archive —
+	// halfway through.
+	$carried = array_filter([
+		'group' => $this->byCategory ? 'category' : null,
+		'status' => $this->status,
+	], static fn(?string $value): bool => $value !== null);
 	$pageUrl = static fn(int $page): string => Minz_Url::display([
 		'c' => 'clickhistory',
 		'a' => 'index',
-		'params' => $byCategory ? ['page' => $page, 'group' => 'category'] : ['page' => $page],
+		'params' => ['page' => $page] + $carried,
 	]);
 ?>
 <?php if ($this->nbPage > 1) { ?>

@@ -33,6 +33,13 @@ jobs:
           find . \( -path ./vendor -o -path ./node_modules -o -path ./.freshrss-core \) -prune -o \
             \( -name '*.php' -o -name '*.phtml' \) -print0 | xargs -0 -n1 php -l
 
+      # The schema upgrade runs exactly once per installation, so a broken one is
+      # invisible until it has already cost somebody their history. Exercised
+      # against real SQLite rather than mocked: what is being checked is what the
+      # database does with those statements.
+      - name: Check the schema upgrade and the upsert
+        run: php tests/schema.php
+
       - name: Check metadata.json is valid JSON
         run: |
           python3 -c "import json,sys; d=json.load(open('metadata.json')); \
