@@ -1,5 +1,5 @@
 {
-	"packageManager": "pnpm@11.13.0",
+	"packageManager": "pnpm@11.20.0",
 	"name": "xextension-clickhistory",
 	"private": true,
 	"description": "Linting for the Click History FreshRSS extension",
