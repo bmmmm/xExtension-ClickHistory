@@ -1,0 +1,48 @@
+<?php
+	declare(strict_types=1);
+
+	// Deliberately not `$this->partial('nav_menu')`. Core's own bar reads a context
+	// that only the stream controllers fill — currentGet(), $id_max, $next_get,
+	// $state — so from here most of its links would point back at this page with
+	// parameters it ignores, and its "mark all read" button would post an empty id
+	// range. Core has the same problem on its own non-stream pages and solves it
+	// the same way: a reduced bar of its own using the same classes, so the theme
+	// styles it without a line of extra CSS (app/views/stats/repartition.phtml,
+	// app/layout/aside_configure.phtml).
+	//
+	// Left out on purpose: the read/unread/starred toggles and the sort dropdown
+	// act on the stream's own query, which this page does not have, and "mark all
+	// read" needs the id range of a stream that is not open. The reading modes and
+	// the refresh link are the two entries that need no context at all.
+	//
+	// The NavReadingModes hook is not called either: extensions add entries there
+	// expecting the stream context, which is exactly what is missing here.
+	$readingModes = FreshRSS_ReadingMode::getReadingModes();
+?>
+<nav class="nav_menu">
+	<div id="nav_menu_views" class="group">
+		<?php foreach ($readingModes as $mode) {
+			// getReadingModes() merges the current request into its targets, so from
+			// here every link would carry this page's own `page` and `group`, which
+			// mean nothing in the stream. None of the modes is ever marked active:
+			// the constructor decides that from the controller name, and this is not
+			// the stream controller.
+			$url = $mode->getUrlParams();
+			$url['params'] = [];
+		?>
+		<a class="<?= $mode->getId() ?> btn" title="<?= htmlspecialchars($mode->getTitle(), ENT_COMPAT, 'UTF-8') ?>"
+			href="<?= Minz_Url::display($url) ?>"><?= $mode->getName() ?></a>
+		<?php } ?>
+	</div>
+
+	<?php
+		// Kept last, where core keeps it — the click listener's toolbar button looks
+		// for `#actualize` to insert itself before. Unlike in the stream this
+		// navigates away rather than refreshing in place: init_actualize(), which
+		// turns the link into an AJAX call with a progress notification, is reached
+		// from init_normal() and so only runs in the stream views (p/scripts/main.js).
+	?>
+	<div id="nav_menu_actualize" class="group">
+		<a id="actualize" class="btn" href="<?= _url('feed', 'actualize') ?>" title="<?= _t('gen.action.actualize') ?>"><?= _i('refresh') ?></a>
+	</div>
+</nav>

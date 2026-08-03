@@ -2,6 +2,11 @@
 	declare(strict_types=1);
 	/** @var ClickHistoryView $this */
 	$groupParams = $this->byCategory ? ['group' => 'category'] : [];
+
+	// Before <main>, where the stream views put core's own bar, and outside the
+	// empty-history branch below: a page with nothing on it is the one a user most
+	// needs a way off of.
+	$this->renderHelper('clickhistory/nav');
 ?>
 <main class="post content click-history">
 	<h1><?= _t('ext.click_history.title') ?></h1>

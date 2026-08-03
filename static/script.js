@@ -159,7 +159,12 @@
 		svg.appendChild(path);
 
 		const link = document.createElement('a');
-		link.className = 'btn';
+		// On the history page — which renders a bar of its own, since core's is
+		// stream-only — the button marks where you are, the way core marks the
+		// active reading mode. `controller_<name>` on <html> is core's own
+		// (app/layout/layout.phtml).
+		const here = document.documentElement.classList.contains('controller_clickhistory');
+		link.className = here ? 'btn active' : 'btn';
 		link.href = vars.index_url;
 		link.title = label;
 		link.setAttribute('aria-label', label);
