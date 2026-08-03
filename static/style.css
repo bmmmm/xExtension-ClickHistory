@@ -22,7 +22,19 @@
 }
 
 .click-history-actions {
-	width: 1%;	/* Shrink to the button: the title column takes what is left. */
+	width: 1%;	/* Shrink to the buttons: the title column takes what is left. */
+}
+
+/* Left to itself the cell shrinks to the widest single button, so the two
+   rating ones wrap and every row grows by a third. Keeping them on one line
+   costs the column 60px, which it takes from the title — worth it while the
+   title still has room, which is why this stops at the width core's own theme
+   breaks at. Below it the trade reverses: measured at 700px the title drops to
+   103px and wraps more than the buttons ever did. */
+@media (min-width: 840px) {
+	.click-history-actions {
+		white-space: nowrap;
+	}
 }
 
 .click-history-actions form {
@@ -31,9 +43,8 @@
 
 /* Each form is a block, so deleting always ends up below the rating — which is
    the point: the destructive button should not sit flush against two that undo
-   with a single click. How the two rating buttons themselves fall, side by side
-   or stacked, is left to the column width; the cell shrinks to fit, so in a
-   narrow one they stack, and that reads fine either way. */
+   with a single click. Whether the two rating buttons themselves share a line
+   is the media query above; both readings are fine, one is just shorter. */
 .click-history-actions form + form {
 	margin-top: 0.3rem;
 }
