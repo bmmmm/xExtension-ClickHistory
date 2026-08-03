@@ -29,10 +29,11 @@
 	margin: 0;
 }
 
-/* The two rating buttons share a line (they are inline), and deleting gets the
-   next one: a form is a block, so this is the default rather than a trick. Worth
-   keeping that way — the destructive button should not sit flush against two that
-   are a single click to undo. */
+/* Each form is a block, so deleting always ends up below the rating — which is
+   the point: the destructive button should not sit flush against two that undo
+   with a single click. How the two rating buttons themselves fall, side by side
+   or stacked, is left to the column width; the cell shrinks to fit, so in a
+   narrow one they stack, and that reads fine either way. */
 .click-history-actions form + form {
 	margin-top: 0.3rem;
 }
