@@ -134,10 +134,18 @@
 										$title = $isCurrent
 											? _t('ext.click_history.rate.undo')
 											: ($rateTitles[$status] ?? '');
+										// btn-important on top of .active: the rating is what the row
+										// says, not merely which control is engaged, so it has to read
+										// at a glance. Core's .active alone is a few percent of
+										// background lightness in a dark theme — rgb(38,38,38) against
+										// rgb(23,23,23), measured — which nobody scanning a table sees.
+										// The accent comes from the theme rather than from a colour of
+										// our own, and unlike --contrast-background-color (defined in
+										// 2 of the 11 bundled themes) this class is in all of them.
 										?>
 										<button type="submit" name="rate"
 											value="<?= $isCurrent ? ClickHistoryDAO::STATUS_UNRATED : $status ?>"
-											class="btn<?= $isCurrent ? ' active' : '' ?>"
+											class="btn<?= $isCurrent ? ' btn-important active' : '' ?>"
 											aria-pressed="<?= $isCurrent ? 'true' : 'false' ?>"
 											title="<?= htmlspecialchars($title, ENT_COMPAT, 'UTF-8') ?>"><?=
 											htmlspecialchars($statusLabels[$status] ?? $status, ENT_NOQUOTES, 'UTF-8') ?></button>

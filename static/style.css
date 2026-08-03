@@ -27,8 +27,14 @@
 
 .click-history-actions form {
 	margin: 0;
-	display: inline-flex;
-	gap: 0.25rem;
+}
+
+/* The two rating buttons share a line (they are inline), and deleting gets the
+   next one: a form is a block, so this is the default rather than a trick. Worth
+   keeping that way — the destructive button should not sit flush against two that
+   are a single click to undo. */
+.click-history-actions form + form {
+	margin-top: 0.3rem;
 }
 
 .click-history-toolbar,
