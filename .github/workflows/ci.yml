@@ -135,19 +135,30 @@ jobs:
       # Everything above needs nothing but the runner. The linters below pull
       # a toolchain over the network, and a failure there used to skip every
       # remaining step — including the tests.
+      #
+      # `!cancelled()` from here on for the same reason, one layer further in:
+      # the two toolchains are unrelated, so one being unavailable must not hide
+      # what the other would have said. It took a broken pnpm release to notice
+      # that a failed `Install pnpm` was silently skipping PHPCS and PHPStan
+      # — the job went red for a reason that had nothing to do with the PHP it
+      # never got round to analysing. A real failure still fails the job; this
+      # only stops one from masking the rest.
       - name: Install pnpm
         uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
+        if: ${{ !cancelled() }}
         uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'pnpm'
 
       - name: Install JS dev dependencies
+        if: ${{ !cancelled() }}
         run: pnpm install --frozen-lockfile
 
       - name: Check JavaScript style (ESLint)
+        if: ${{ !cancelled() }}
         run: pnpm run eslint
 
       # PHPStan needs the FreshRSS core classes this extension extends
@@ -156,6 +167,7 @@ jobs:
       # extensions: check core out as a sibling directory purely to resolve those
       # classes, excluded from analysis itself (see phpstan.neon).
       - name: Git checkout FreshRSS core for PHPStan
+        if: ${{ !cancelled() }}
         uses: actions/checkout@v7
         with:
           repository: FreshRSS/FreshRSS
@@ -166,6 +178,7 @@ jobs:
           persist-credentials: false
 
       - name: Use Composer cache
+        if: ${{ !cancelled() }}
         id: composer-cache
         uses: actions/cache@v6
         with:
@@ -175,10 +188,13 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install PHP dev dependencies
+        if: ${{ !cancelled() }}
         run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Check PHP code style (PHP_CodeSniffer, FreshRSS' ruleset)
+        if: ${{ !cancelled() }}
         run: vendor/bin/phpcs .
 
       - name: Static analysis (PHPStan)
+        if: ${{ !cancelled() }}
         run: vendor/bin/phpstan analyse --no-progress
