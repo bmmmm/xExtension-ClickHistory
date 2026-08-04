@@ -112,6 +112,14 @@
 				_csrf: (window.context && window.context.csrf) || '',
 				id: entryId,
 			}),
+		}).then(function (response) {
+			// fetch() only rejects when the request never completed, so without this
+			// a 400, a 404, a 500 or a redirect to the login page all look exactly
+			// like a recorded click — the one failure mode this extension has, and
+			// the console would say nothing about it.
+			if (!response.ok) {
+				console.error('Click history: recording entry ' + entryId + ' failed with HTTP ' + response.status);
+			}
 		}).catch(console.error);
 		// Errors stay in the console on purpose. A passive history must never
 		// interrupt what the user was actually doing.
