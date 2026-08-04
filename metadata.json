@@ -4,5 +4,6 @@
 	"description": "Keeps a history of the article links you actually opened, with title and feed, on a page of its own.",
 	"version": "0.3.1",
 	"entrypoint": "ClickHistory",
-	"type": "user"
+	"type": "user",
+	"url": "https://github.com/bmmmm/xExtension-ClickHistory"
 }

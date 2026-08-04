@@ -40,10 +40,14 @@ jobs:
       - name: Check the schema upgrade and the upsert
         run: php tests/schema.php
 
+      # `url` is the field FreshRSS' community extension list links its name to
+      # (app/views/extension/index.phtml), and it is the only pointer back to the
+      # source that travels inside the shipped directory. Checked like the rest, so
+      # dropping it takes a deliberate edit here.
       - name: Check metadata.json is valid JSON
         run: |
           python3 -c "import json,sys; d=json.load(open('metadata.json')); \
-            [sys.exit('missing key: ' + k) for k in ('name','entrypoint','type','version') if k not in d]"
+            [sys.exit('missing key: ' + k) for k in ('name','entrypoint','type','version','url') if k not in d]"
 
       - name: Check the entrypoint matches the class name
         run: |
