@@ -79,25 +79,6 @@ jobs:
           node --version
           find static -name '*.js' -print0 | xargs -0 -n1 node --check
 
-      - name: Run the click-detection tests
-        run: |
-          set -o pipefail   # otherwise the pipe below reports tee's exit code
-          # Pin the reporter: the default differs between Node versions and the
-          # guard below parses its output. The whole directory, not one file by
-          # name, so a test added tomorrow cannot be silently skipped. The glob
-          # rather than `tests/`: newer Node reads a bare directory as a module
-          # path and reports zero tests.
-          node --test --test-reporter=tap tests/*.test.js | tee test.log
-          # `node --test` exits 0 on a skipped run, and an empty file still
-          # reports `# pass 1`, so count the cases that are meant to run.
-          expected=$(cat tests/*.test.js | grep -c '^test(')
-          passed=$(sed -n 's/^# pass \([0-9]*\)$/\1/p' test.log)
-          skipped=$(sed -n 's/^# skipped \([0-9]*\)$/\1/p' test.log)
-          echo "expected=${expected} passed=${passed:-0} skipped=${skipped:-0}"
-          test "${passed:-0}" -eq "${expected}" \
-            || { echo "expected ${expected} passing tests, got ${passed:-0}"; exit 1; }
-          test "${skipped:-0}" -eq 0 || { echo 'a test was skipped'; exit 1; }
-
       # A missing key does not fail loudly at runtime — FreshRSS renders the key
       # itself, so an untranslated page looks like a typo rather than a bug.
       - name: Check every translation key used by the extension exists
@@ -137,9 +118,9 @@ jobs:
             }
           '
 
-      # Everything above needs nothing but the runner. The linters below pull
-      # a toolchain over the network, and a failure there used to skip every
-      # remaining step — including the tests.
+      # Everything above needs nothing but the runner — including the PHP checks,
+      # which is the point of the ordering: a toolchain the steps below pull over
+      # the network cannot take them down with it.
       #
       # `!cancelled()` from here on for the same reason, one layer further in:
       # the two toolchains are unrelated, so one being unavailable must not hide
@@ -161,6 +142,29 @@ jobs:
       - name: Install JS dev dependencies
         if: ${{ !cancelled() }}
         run: pnpm install --frozen-lockfile
+
+      # Below `pnpm install` rather than up with the runner-only steps: the
+      # selector tests need a DOM, and tests/main-link.test.js gets it from
+      # linkedom.
+      - name: Run the click-detection and selector tests
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail   # otherwise the pipe below reports tee's exit code
+          # Pin the reporter: the default differs between Node versions and the
+          # guard below parses its output. The whole directory, not one file by
+          # name, so a test added tomorrow cannot be silently skipped. The glob
+          # rather than `tests/`: newer Node reads a bare directory as a module
+          # path and reports zero tests.
+          node --test --test-reporter=tap tests/*.test.js | tee test.log
+          # `node --test` exits 0 on a skipped run, and an empty file still
+          # reports `# pass 1`, so count the cases that are meant to run.
+          expected=$(cat tests/*.test.js | grep -c '^test(')
+          passed=$(sed -n 's/^# pass \([0-9]*\)$/\1/p' test.log)
+          skipped=$(sed -n 's/^# skipped \([0-9]*\)$/\1/p' test.log)
+          echo "expected=${expected} passed=${passed:-0} skipped=${skipped:-0}"
+          test "${passed:-0}" -eq "${expected}" \
+            || { echo "expected ${expected} passing tests, got ${passed:-0}"; exit 1; }
+          test "${skipped:-0}" -eq 0 || { echo 'a test was skipped'; exit 1; }
 
       - name: Check JavaScript style (ESLint)
         if: ${{ !cancelled() }}

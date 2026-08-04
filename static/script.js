@@ -171,9 +171,14 @@
 	}
 
 	// Under the test runner there is no document and only the pure helpers are
-	// exported; see tests/click-detection.test.js.
+	// exported; see tests/click-detection.test.js and tests/main-link.test.js.
+	// MAIN_LINK_SELECTOR and articleOfMainLink() are the extension's only
+	// dependency on core's markup, so they are exported to be held against
+	// fixtures copied out of the core views rather than only reasoned about.
 	if (typeof document === 'undefined') {
 		module.exports = {
+			MAIN_LINK_SELECTOR: MAIN_LINK_SELECTOR,
+			articleOfMainLink: articleOfMainLink,
 			createOncePerLoadGuard: createOncePerLoadGuard,
 			shouldHandleGoWebsite: shouldHandleGoWebsite,
 		};

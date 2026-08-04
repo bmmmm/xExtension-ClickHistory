@@ -152,7 +152,10 @@ for that: the script matches the three CSS selectors core uses for it
 (`a.go_website`, the link icon in the footer row, and the headline of a collapsed
 list row). If a future FreshRSS release renames one of them, clicks through that
 particular element stop being recorded — silently, since nothing else about the
-extension depends on it.
+extension depends on it. `tests/main-link.test.js` therefore holds the selectors
+against HTML copied out of the 1.29.0 core views, including the case of a feed
+putting core's own `go_website` class on a link in the article body, so the
+coupling shows up as a failing build rather than as a history with holes in it.
 
 The page itself needs no markup of core's: it is reached through the
 `MenuOtherEntry` hook, which is a supported extension point.
@@ -160,7 +163,9 @@ The page itself needs no markup of core's: it is reached through the
 ## Development
 
 ```sh
-# JavaScript tests (click detection and the once-per-load guard)
+# JavaScript tests (click detection, the once-per-load guard, and the core-markup
+# selectors against fixtures from the 1.29.0 views). Needs `pnpm install` first:
+# the selector tests parse their fixtures with linkedom.
 node --test tests/*.test.js
 
 # Schema upgrade and upsert, against a real database (in-memory SQLite by
