@@ -51,13 +51,26 @@
 						<td class="click-history-number"><?= $row['good'] ?></td>
 						<td class="click-history-number"><?= $row['dropped'] ?></td>
 						<td class="click-history-number"><?= $row['unrated'] ?></td>
-						<td class="click-history-number"><?php if ($ratio === null) { ?>
-							<span class="click-history-none" title="<?= htmlspecialchars(_t('ext.click_history.stats.no_ratio'), ENT_COMPAT, 'UTF-8') ?>">—</span>
+						<td class="click-history-number"><?php if ($ratio === null) {
+							// The title carries the explanation for mouse users; a screen
+							// reader may never announce a title on a plain span, so the
+							// hidden text says the same thing where it will be read.
+						?>
+							<span class="click-history-none" aria-hidden="true" title="<?= htmlspecialchars(_t('ext.click_history.stats.no_ratio'), ENT_COMPAT, 'UTF-8') ?>">—</span>
+							<span class="click-history-visually-hidden"><?= _t('ext.click_history.stats.no_ratio') ?></span>
 						<?php } else {
 							// Rounded to whole percent: the figures behind it are two- or
 							// three-digit counts, and a decimal would suggest a precision
-							// they do not have.
-							echo (int)round($ratio * 100), '%';
+							// they do not have. Except at the ends — 1 good out of 1000
+							// judged is not "0%", and 999 out of 1000 is not "100%", so a
+							// non-zero ratio never rounds into either endpoint.
+							$percent = (int)round($ratio * 100);
+							if ($percent === 0 && $ratio > 0.0) {
+								$percent = 1;
+							} elseif ($percent === 100 && $ratio < 1.0) {
+								$percent = 99;
+							}
+							echo $percent, '%';
 						} ?></td>
 					</tr>
 				<?php } ?>

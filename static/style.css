@@ -76,3 +76,15 @@
 	text-align: right;
 	white-space: nowrap;
 }
+
+/* For the em dash in the ratio column: its explanation is a title attribute,
+   which screen readers may never announce on a plain span — this class carries
+   the same words where they will be read, without occupying a pixel. */
+.click-history-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}

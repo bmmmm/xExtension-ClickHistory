@@ -27,12 +27,14 @@
 		$this->renderHelper('clickhistory/filters');
 	?>
 
-	<?php if ($this->history === []) { ?>
-		<p class="alert alert-warn"><?= $this->status === null
-			? _t('ext.click_history.empty')
-			: _t('ext.click_history.empty_filtered') ?></p>
-	<?php } else { ?>
-		<div class="click-history-toolbar">
+	<?php
+		// Like the filters: rendered whether or not this page has rows. A status
+		// filter matching nothing empties the page, not the archive — the figures
+		// link has to survive that. The group and export buttons do act on the
+		// current rows, so they alone stay behind the branch.
+	?>
+	<div class="click-history-toolbar">
+		<?php if ($this->history !== []) { ?>
 			<?php if ($this->byCategory) { ?>
 				<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'index', 'params' => $statusParams]) ?>"><?=
 					_t('ext.click_history.group.by_date') ?></a>
@@ -44,15 +46,21 @@
 				_t('ext.click_history.action.export_json') ?></a>
 			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $viewParams + ['format' => 'csv']]) ?>"><?=
 				_t('ext.click_history.action.export_csv') ?></a>
-			<?php
-				// Carries neither the grouping nor the filter, unlike every other link
-				// on this page: the figures are one row per feed over the whole
-				// archive, and a filtered version of them would answer a different
-				// question — "of the ones I already called good, how many are good".
-			?>
-			<a class="btn" href="<?= _url('clickhistory', 'stats') ?>"><?= _t('ext.click_history.stats.title') ?></a>
-		</div>
+		<?php } ?>
+		<?php
+			// Carries neither the grouping nor the filter, unlike every other link
+			// on this page: the figures are one row per feed over the whole
+			// archive, and a filtered version of them would answer a different
+			// question — "of the ones I already called good, how many are good".
+		?>
+		<a class="btn" href="<?= _url('clickhistory', 'stats') ?>"><?= _t('ext.click_history.stats.title') ?></a>
+	</div>
 
+	<?php if ($this->history === []) { ?>
+		<p class="alert alert-warn"><?= $this->status === null
+			? _t('ext.click_history.empty')
+			: _t('ext.click_history.empty_filtered') ?></p>
+	<?php } else { ?>
 		<?php $this->renderHelper('clickhistory/pagination'); ?>
 
 		<div class="table-wrapper scrollbar-thin">
