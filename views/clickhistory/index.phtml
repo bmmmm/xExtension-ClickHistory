@@ -115,7 +115,7 @@
 						<td class="click-history-actions">
 							<form method="post" action="<?= _url('clickhistory', 'rate') ?>">
 								<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
-								<input type="hidden" name="id" value="<?= $item['id_entry'] ?>" />
+								<input type="hidden" name="id" value="<?= htmlspecialchars($item['id_entry'], ENT_COMPAT, 'UTF-8') ?>" />
 								<?php
 									// The page the judgement is made on travels along, so the
 									// answer can come back to it.
@@ -155,7 +155,7 @@
 							</form>
 							<form method="post" action="<?= _url('clickhistory', 'delete') ?>">
 								<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
-								<input type="hidden" name="id" value="<?= $item['id_entry'] ?>" />
+								<input type="hidden" name="id" value="<?= htmlspecialchars($item['id_entry'], ENT_COMPAT, 'UTF-8') ?>" />
 								<button type="submit" class="btn btn-attention confirm"><?= _t('ext.click_history.action.delete') ?></button>
 							</form>
 						</td>
