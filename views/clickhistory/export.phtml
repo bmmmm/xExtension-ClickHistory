@@ -22,8 +22,10 @@
 			// local codepage and mangling every non-ASCII headline.
 			fwrite($out, "\xEF\xBB\xBF");
 			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'status', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso']);
-			// Straight from the statement to the output stream: only the row being
-			// written is ever in memory, whatever the archive has grown to.
+			// Straight from the statement to the output stream: this code holds one
+			// row at a time and never builds its own copy of the history. (The
+			// driver may still buffer the result set on its side — pdo_mysql and
+			// pdo_pgsql do by default — which is outside this code's control.)
 			foreach ($this->exportRows as $item) {
 				fputcsv($out, [
 					$item['id_entry'],

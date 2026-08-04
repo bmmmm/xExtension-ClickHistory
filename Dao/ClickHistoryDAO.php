@@ -182,10 +182,11 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	 * status filter travels with it, so what is downloaded is what was on screen.
 	 *
 	 * A generator rather than a list, because "the whole history" is the one query
-	 * here with no upper bound on its size: the row the view is writing is the only
-	 * one that has to be in memory, and the driver hands them over as they come.
-	 * An error yields nothing, which the caller sees as an empty export — the same
-	 * answer the list-returning methods give.
+	 * here with no upper bound on its size: this code keeps one row at a time and
+	 * builds no array of its own. (Whether the driver buffers the result set on
+	 * its side is its business — pdo_mysql and pdo_pgsql do by default.) An error
+	 * yields nothing, which the caller sees as an empty export — the same answer
+	 * the list-returning methods give.
 	 *
 	 * @return Generator<int, ClickHistoryRow>
 	 */
