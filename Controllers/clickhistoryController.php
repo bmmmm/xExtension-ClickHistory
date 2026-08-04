@@ -16,6 +16,15 @@ final class ClickHistoryView extends FreshRSS_View {
 	 *     clicked_at:int, first_clicked_at:int, status:string}>
 	 */
 	public array $history = [];
+	/**
+	 * The export's rows, kept apart from $history and typed as a stream: nothing
+	 * reads them twice and there is no upper bound on how many there are.
+	 *
+	 * @var iterable<array{id_entry:string, url:string, title:string, feed_name:string,
+	 *     id_feed:int|null, category_name:string, id_category:int|null,
+	 *     clicked_at:int, first_clicked_at:int, status:string}>
+	 */
+	public iterable $exportRows = [];
 	public int $total = 0;
 	public bool $byCategory = false;
 	/** The triage state being shown, or null for all of them. */
@@ -121,7 +130,7 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		$this->view->_layout(null);
 
 		$format = Minz_Request::paramString('format') === 'csv' ? 'csv' : 'json';
-		$rows = (new ClickHistoryDAO())->listAll(
+		$rows = (new ClickHistoryDAO())->streamAll(
 			Minz_Request::paramString('group') === 'category',
 			self::requestedStatus(),
 		);
@@ -133,7 +142,7 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		header('Content-Disposition: attachment; filename="' . $filename . '"');
 
 		$this->view->exportFormat = $format;
-		$this->view->history = $rows;
+		$this->view->exportRows = $rows;
 	}
 
 	/**

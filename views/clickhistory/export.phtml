@@ -22,7 +22,9 @@
 			// local codepage and mangling every non-ASCII headline.
 			fwrite($out, "\xEF\xBB\xBF");
 			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'status', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso']);
-			foreach ($this->history as $item) {
+			// Straight from the statement to the output stream: only the row being
+			// written is ever in memory, whatever the archive has grown to.
+			foreach ($this->exportRows as $item) {
 				fputcsv($out, [
 					$item['id_entry'],
 					$csvSafe($item['title']),
@@ -41,8 +43,12 @@
 		return;
 	}
 
+	// JSON is assembled in one piece rather than streamed like the CSV above: a
+	// hand-written envelope would have to move `count` after `entries`, and the
+	// pretty-printing that makes the file readable is json_encode's, not ours. One
+	// copy of the history in memory, where it used to be two.
 	$entries = [];
-	foreach ($this->history as $item) {
+	foreach ($this->exportRows as $item) {
 		$entries[] = [
 			'id_entry' => $item['id_entry'],
 			'title' => $item['title'],
@@ -57,9 +63,23 @@
 		];
 	}
 
-	echo json_encode([
+	// JSON_INVALID_UTF8_SUBSTITUTE rather than letting one bad byte lose the lot:
+	// the table holds what a feed sent, and a single malformed sequence anywhere in
+	// it would otherwise make json_encode() return false and the download arrive
+	// empty. The substitution character marks where that happened.
+	$json = json_encode([
 		'generator' => 'xExtension-ClickHistory',
 		'exported_at' => date(DATE_ATOM),
 		'count' => count($entries),
 		'entries' => $entries,
-	], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+
+	if ($json === false) {
+		// Nothing left to fall back to: the headers went out before this file was
+		// reached, so the browser is already saving a .json. Saying so in the log is
+		// the difference between "the export is broken" and a reason.
+		Minz_Log::error('ClickHistory: cannot encode the export: ' . json_last_error_msg());
+		echo '{"error": "encoding failed, see the FreshRSS logs"}';
+		return;
+	}
+	echo $json;

@@ -195,11 +195,17 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	 * that silently stopped at the first page would be worse than none. The
 	 * status filter travels with it, so what is downloaded is what was on screen.
 	 *
-	 * @return list<ClickHistoryRow>
+	 * A generator rather than a list, because "the whole history" is the one query
+	 * here with no upper bound on its size: the row the view is writing is the only
+	 * one that has to be in memory, and the driver hands them over as they come.
+	 * An error yields nothing, which the caller sees as an empty export — the same
+	 * answer the list-returning methods give.
+	 *
+	 * @return Generator<int, ClickHistoryRow>
 	 */
-	public function listAll(bool $byCategory = false, ?string $status = null): array {
+	public function streamAll(bool $byCategory = false, ?string $status = null): Generator {
 		if (!$this->ensureTableExists()) {
-			return [];
+			return;
 		}
 		$sql = <<<SQL
 			SELECT id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at, status
@@ -213,9 +219,17 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			!$stm->execute()) {
 			$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
 			Minz_Log::error('ClickHistory: cannot export entries: ' . json_encode($info));
-			return [];
+			return;
 		}
-		return $this->normalise($stm);
+		while (true) {
+			/** @var mixed $row */
+			$row = $stm->fetch(PDO::FETCH_ASSOC);
+			if (!is_array($row)) {
+				break;
+			}
+			/** @var array<string,mixed> $row */
+			yield self::normaliseRow($row);
+		}
 	}
 
 	/**
@@ -297,20 +311,28 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		$rows = [];
 		/** @var array<string,mixed> $row */
 		foreach ($stm->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
-			$rows[] = [
-				'id_entry' => is_scalar($row['id_entry'] ?? null) ? (string)$row['id_entry'] : '',
-				'url' => is_scalar($row['url'] ?? null) ? (string)$row['url'] : '',
-				'title' => is_scalar($row['title'] ?? null) ? (string)$row['title'] : '',
-				'feed_name' => is_scalar($row['feed_name'] ?? null) ? (string)$row['feed_name'] : '',
-				'id_feed' => is_numeric($row['id_feed'] ?? null) ? (int)$row['id_feed'] : null,
-				'category_name' => is_scalar($row['category_name'] ?? null) ? (string)$row['category_name'] : '',
-				'id_category' => is_numeric($row['id_category'] ?? null) ? (int)$row['id_category'] : null,
-				'clicked_at' => is_numeric($row['clicked_at'] ?? null) ? (int)$row['clicked_at'] : 0,
-				'first_clicked_at' => is_numeric($row['first_clicked_at'] ?? null) ? (int)$row['first_clicked_at'] : 0,
-				'status' => self::normaliseStatus(is_scalar($row['status'] ?? null) ? (string)$row['status'] : ''),
-			];
+			$rows[] = self::normaliseRow($row);
 		}
 		return $rows;
+	}
+
+	/**
+	 * @param array<string,mixed> $row
+	 * @return ClickHistoryRow
+	 */
+	private static function normaliseRow(array $row): array {
+		return [
+			'id_entry' => is_scalar($row['id_entry'] ?? null) ? (string)$row['id_entry'] : '',
+			'url' => is_scalar($row['url'] ?? null) ? (string)$row['url'] : '',
+			'title' => is_scalar($row['title'] ?? null) ? (string)$row['title'] : '',
+			'feed_name' => is_scalar($row['feed_name'] ?? null) ? (string)$row['feed_name'] : '',
+			'id_feed' => is_numeric($row['id_feed'] ?? null) ? (int)$row['id_feed'] : null,
+			'category_name' => is_scalar($row['category_name'] ?? null) ? (string)$row['category_name'] : '',
+			'id_category' => is_numeric($row['id_category'] ?? null) ? (int)$row['id_category'] : null,
+			'clicked_at' => is_numeric($row['clicked_at'] ?? null) ? (int)$row['clicked_at'] : 0,
+			'first_clicked_at' => is_numeric($row['first_clicked_at'] ?? null) ? (int)$row['first_clicked_at'] : 0,
+			'status' => self::normaliseStatus(is_scalar($row['status'] ?? null) ? (string)$row['status'] : ''),
+		];
 	}
 
 	/** Must be filtered exactly like listEntries(), or the page count drifts from the rows. */
