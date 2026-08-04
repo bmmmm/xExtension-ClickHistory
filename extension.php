@@ -53,8 +53,10 @@ final class ClickHistoryExtension extends Minz_Extension {
 
 		// Every value falls back to what is already stored rather than to the
 		// default, so a request carrying only some of the fields cannot silently
-		// reset the rest. An unchecked checkbox sends nothing at all, so that one
-		// is read from whether the field is present.
+		// reset the rest. An unchecked checkbox sends nothing at all, which would
+		// make track_clicks the one field that breaks that rule — configure.phtml
+		// therefore puts a hidden `0` in front of it, so it is always present and
+		// paramBoolean() reads an answer rather than an absence.
 		$current = $this->settings();
 
 		$this->setUserConfigurationValue('track_clicks', Minz_Request::paramBoolean('track_clicks'));

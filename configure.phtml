@@ -10,6 +10,14 @@
 	<div class="form-group">
 		<label class="group-name" for="track_clicks"><?= _t('ext.click_history.conf.track_clicks') ?></label>
 		<div class="group-controls">
+			<?php
+				// Every other field falls back to the stored value when it is absent, so
+				// a request carrying only some of them cannot reset the rest. An
+				// unchecked checkbox sends nothing at all, which would make this the one
+				// field that breaks that rule. This carries the "off" answer explicitly;
+				// the browser sends the later value when the box is ticked.
+			?>
+			<input type="hidden" name="track_clicks" value="0" />
 			<input type="checkbox" name="track_clicks" id="track_clicks" value="1"<?= $settings['track_clicks'] ? ' checked="checked"' : '' ?> />
 			<p class="help"><?= _t('ext.click_history.conf.track_clicks_help') ?></p>
 		</div>
