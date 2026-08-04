@@ -145,6 +145,9 @@ A feed decides what an article's link is, so that link is untrusted input.
   POST without a valid token before a controller is reached, and extensions are
   not on its exemption list.
 
+Found something anyway? [.github/SECURITY.md](.github/SECURITY.md) says where to
+send it and what to put in it. Please do not open a public issue for one.
+
 ## One dependency on core's markup
 
 Detecting a click means recognising the article's own link, and there is no hook
@@ -208,6 +211,11 @@ docker run --rm -v "$PWD:/app" -w /app php:8.1-cli sh -c '
 English and German are included. Adding a language only means adding an
 `i18n/<code>/ext.php` file; CI fails if one of them is missing a key the code
 uses.
+
+## Changes
+
+[CHANGELOG.md](CHANGELOG.md) — what changed per release, and what is waiting for
+the next one.
 
 ## Licence
 
