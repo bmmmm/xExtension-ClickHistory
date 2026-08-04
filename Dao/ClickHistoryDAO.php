@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/ClickHistorySchema.php';
+
 /**
  * The click history lives in a table of its own rather than in the core's
  * tag/entrytag mechanism, because `_entrytag` references `_entry(id)`: purging an
@@ -57,7 +59,7 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		if (isset(self::$tableChecked[$key])) {
 			return true;
 		}
-		foreach ($this->createTableSql() as $sql) {
+		foreach (ClickHistorySchema::createTable($this->pdo->dbType()) as $sql) {
 			if ($this->pdo->exec($sql) === false) {
 				Minz_Log::error('ClickHistory: cannot create table: ' . json_encode($this->pdo->errorInfo()));
 				return false;
@@ -65,8 +67,9 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		}
 		// In the order the columns were introduced. Each probe is independent, so a
 		// table stuck at any earlier version catches up in one pass.
-		if (!$this->ensureColumns('category_name', $this->addCategoryColumnsSql()) ||
-			!$this->ensureColumns('status', $this->addStatusColumnSql())) {
+		$dbType = $this->pdo->dbType();
+		if (!$this->ensureColumns('category_name', ClickHistorySchema::addCategoryColumns($dbType)) ||
+			!$this->ensureColumns('status', ClickHistorySchema::addStatusColumn($dbType))) {
 			return false;
 		}
 		self::$tableChecked[$key] = true;
@@ -74,17 +77,14 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	}
 
 	/**
-	 * Adds columns a table created by an earlier version does not have yet.
-	 * Deliberately not expressed as `ADD COLUMN IF NOT EXISTS`: MySQL has no such
-	 * clause (MariaDB does), so the presence of one column is probed instead — a
-	 * SELECT that fails means it is missing, which works the same on all three
-	 * backends.
+	 * Adds columns a table created by an earlier version does not have yet: a probe
+	 * that fails means the column is missing (see ClickHistorySchema::columnProbe()).
 	 *
 	 * @param string $probe the column whose absence means the statements must run
 	 * @param list<string> $statements
 	 */
 	private function ensureColumns(string $probe, array $statements): bool {
-		if ($this->pdo->query("SELECT {$probe} FROM `_click_history` LIMIT 1") !== false) {
+		if ($this->pdo->query(ClickHistorySchema::columnProbe($probe)) !== false) {
 			return true;
 		}
 		foreach ($statements as $sql) {
@@ -98,9 +98,7 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 
 	/**
 	 * Records one opened article, or moves an existing entry's `clicked_at`
-	 * forward. `url`, `title` and `feed_name` are never overwritten: they are the
-	 * state as of the first click, which is what an archive should show even
-	 * after a feed has retitled the article.
+	 * forward; the statement itself is ClickHistorySchema::record().
 	 */
 	public function record(
 		string $idEntry,
@@ -117,22 +115,7 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return false;
 		}
 
-		$sql = <<<'SQL'
-			INSERT INTO `_click_history`
-				(id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at, status)
-			VALUES (:id_entry, :url, :title, :feed_name, :id_feed, :category_name, :id_category, :clicked_at, :first_clicked_at, :status)
-			SQL;
-		// The one real dialect difference. Both branches update nothing but the
-		// timestamp, so a second click cannot rewrite the archived values above.
-		// `status` in particular has to stay out of the UPDATE: reopening an
-		// article the user has already judged must not throw that judgement away.
-		$sql .= "\n" . ($this->pdo->dbType() === 'mysql'
-			// VALUES() is deprecated from MySQL 8.0.20 in favour of an alias, but
-			// the alias syntax does not exist before it and FreshRSS supports 5.7.
-			? 'ON DUPLICATE KEY UPDATE clicked_at = VALUES(clicked_at)'
-			: 'ON CONFLICT (id_entry) DO UPDATE SET clicked_at = excluded.clicked_at');
-
-		$stm = $this->pdo->prepare($sql);
+		$stm = $this->pdo->prepare(ClickHistorySchema::record($this->pdo->dbType()));
 		if ($stm !== false &&
 			// A 64-bit id bound as an integer would overflow on 32-bit PHP, so it
 			// travels as a string all the way to the BIGINT column — the same way
@@ -168,11 +151,14 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return [];
 		}
 
+		$columns = ClickHistorySchema::COLUMNS;
+		$where = ClickHistorySchema::statusClause($status);
+		$order = ClickHistorySchema::orderClause($byCategory);
 		$sql = <<<SQL
-			SELECT id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at, status
+			SELECT {$columns}
 			FROM `_click_history`
-			{$this->statusClause($status)}
-			{$this->orderClause($byCategory)}
+			{$where}
+			{$order}
 			LIMIT :limit OFFSET :offset
 			SQL;
 
@@ -207,11 +193,14 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		if (!$this->ensureTableExists()) {
 			return;
 		}
+		$columns = ClickHistorySchema::COLUMNS;
+		$where = ClickHistorySchema::statusClause($status);
+		$order = ClickHistorySchema::orderClause($byCategory);
 		$sql = <<<SQL
-			SELECT id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at, status
+			SELECT {$columns}
 			FROM `_click_history`
-			{$this->statusClause($status)}
-			{$this->orderClause($byCategory)}
+			{$where}
+			{$order}
 			SQL;
 		$stm = $this->pdo->prepare($sql);
 		if ($stm === false ||
@@ -280,22 +269,6 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		return $counts;
 	}
 
-	/**
-	 * id_entry breaks the tie: two articles opened in the same second would
-	 * otherwise be free to swap places between pages and appear twice or not at
-	 * all. Entry ids are timestamp-derived, so this stays in click order.
-	 */
-	private function orderClause(bool $byCategory): string {
-		return $byCategory
-			? 'ORDER BY category_name ASC, clicked_at DESC, id_entry DESC'
-			: 'ORDER BY clicked_at DESC, id_entry DESC';
-	}
-
-	/** Interpolated, but never with a caller's value — the status itself is bound. */
-	private function statusClause(?string $status): string {
-		return $status === null ? '' : 'WHERE status = :status';
-	}
-
 	/** An unknown value — hand-edited, or written by a later version — reads as unrated. */
 	private static function normaliseStatus(string $status): string {
 		return in_array($status, self::STATUSES, true) ? $status : self::STATUS_UNRATED;
@@ -340,7 +313,7 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		if (!$this->ensureTableExists()) {
 			return 0;
 		}
-		$stm = $this->pdo->prepare('SELECT COUNT(*) FROM `_click_history` ' . $this->statusClause($status));
+		$stm = $this->pdo->prepare('SELECT COUNT(*) FROM `_click_history` ' . ClickHistorySchema::statusClause($status));
 		if ($stm === false ||
 			($status !== null && !$stm->bindValue(':status', $status, PDO::PARAM_STR)) ||
 			!$stm->execute()) {
@@ -374,121 +347,5 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return false;
 		}
 		return true;
-	}
-
-	/**
-	 * The statements that create the table, in order. Split into one statement
-	 * per element because PDO::exec() only runs the first one on some drivers.
-	 *
-	 * Three things differ per dialect and nothing else: the column types, the
-	 * table options, and where the index on `clicked_at` goes — MySQL has no
-	 * `CREATE INDEX IF NOT EXISTS`, so there it has to be declared inline.
-	 *
-	 * There is deliberately no FOREIGN KEY to `_entry`: with ON DELETE CASCADE,
-	 * purging an article would delete its history entry (the opposite of what
-	 * this extension is for), and without it the purge would be blocked instead.
-	 *
-	 * `url` and `title` stay TEXT even on MySQL. Only `clicked_at` is ever
-	 * indexed, and a VARCHAR long enough for real article links would run into
-	 * InnoDB's row-size limit for nothing — core keeps `_entry.link` unindexed
-	 * for the same reason.
-	 *
-	 * @return list<string>
-	 */
-	private function createTableSql(): array {
-		switch ($this->pdo->dbType()) {
-			case 'mysql':
-				return [
-					<<<'SQL'
-						CREATE TABLE IF NOT EXISTS `_click_history` (
-							`id_entry` BIGINT NOT NULL,
-							`url` TEXT NOT NULL,
-							`title` TEXT NOT NULL,
-							`feed_name` VARCHAR(255) NOT NULL,
-							`id_feed` INT,
-							`category_name` VARCHAR(255) NOT NULL DEFAULT '',
-							`id_category` INT,
-							`clicked_at` BIGINT NOT NULL,
-							`first_clicked_at` BIGINT NOT NULL,
-							`status` VARCHAR(16) NOT NULL DEFAULT 'unrated',
-							PRIMARY KEY (`id_entry`),
-							INDEX (`clicked_at`)
-						) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
-						ENGINE = INNODB
-						SQL,
-				];
-			case 'pgsql':
-				return [
-					<<<'SQL'
-						CREATE TABLE IF NOT EXISTS `_click_history` (
-							`id_entry` BIGINT NOT NULL,
-							`url` TEXT NOT NULL,
-							`title` TEXT NOT NULL,
-							`feed_name` TEXT NOT NULL,
-							`id_feed` INT,
-							`category_name` TEXT NOT NULL DEFAULT '',
-							`id_category` INT,
-							`clicked_at` BIGINT NOT NULL,
-							`first_clicked_at` BIGINT NOT NULL,
-							`status` TEXT NOT NULL DEFAULT 'unrated',
-							PRIMARY KEY (`id_entry`)
-						)
-						SQL,
-					'CREATE INDEX IF NOT EXISTS `_click_history_clicked_at_index` ON `_click_history`(`clicked_at`)',
-				];
-			default:
-				return [
-					<<<'SQL'
-						CREATE TABLE IF NOT EXISTS `_click_history` (
-							`id_entry` BIGINT NOT NULL,
-							`url` TEXT NOT NULL,
-							`title` TEXT NOT NULL,
-							`feed_name` TEXT NOT NULL,
-							`id_feed` INTEGER,
-							`category_name` TEXT NOT NULL DEFAULT '',
-							`id_category` INTEGER,
-							`clicked_at` INTEGER NOT NULL,
-							`first_clicked_at` INTEGER NOT NULL,
-							`status` TEXT NOT NULL DEFAULT 'unrated',
-							PRIMARY KEY (`id_entry`)
-						)
-						SQL,
-					'CREATE INDEX IF NOT EXISTS `_click_history_clicked_at_index` ON `_click_history`(`clicked_at`)',
-				];
-		}
-	}
-
-	/**
-	 * Upgrades a table created before the category was recorded. A DEFAULT is
-	 * required rather than merely convenient: SQLite refuses to add a NOT NULL
-	 * column without one, and the rows already in the table have no category to
-	 * put there — the feed they came from may not even exist any more.
-	 *
-	 * @return list<string>
-	 */
-	private function addCategoryColumnsSql(): array {
-		$nameType = $this->pdo->dbType() === 'mysql' ? 'VARCHAR(255)' : 'TEXT';
-		$intType = $this->pdo->dbType() === 'sqlite' ? 'INTEGER' : 'INT';
-		return [
-			"ALTER TABLE `_click_history` ADD COLUMN `category_name` {$nameType} NOT NULL DEFAULT ''",
-			"ALTER TABLE `_click_history` ADD COLUMN `id_category` {$intType}",
-		];
-	}
-
-	/**
-	 * Upgrades a table created before articles could be judged. Everything already
-	 * recorded becomes unrated, which is the honest answer: those clicks happened
-	 * before there was anything to say about them.
-	 *
-	 * The DEFAULT is not merely convenient — SQLite refuses to add a NOT NULL
-	 * column without one. It is spelled out rather than interpolated from the
-	 * constant because it also has to sit in the CREATE TABLE statements above,
-	 * where the SQL is a nowdoc.
-	 *
-	 * @return list<string>
-	 */
-	private function addStatusColumnSql(): array {
-		$type = $this->pdo->dbType() === 'mysql' ? 'VARCHAR(16)' : 'TEXT';
-		return ["ALTER TABLE `_click_history` ADD COLUMN `status` {$type} NOT NULL DEFAULT 'unrated'"];
 	}
 }
