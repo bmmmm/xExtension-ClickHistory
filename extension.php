@@ -46,9 +46,10 @@ final class ClickHistoryExtension extends Minz_Extension {
 		if ($controller === 'clickhistory') {
 			Minz_View::appendStyle($this->getFileUrl('style.css'));
 		}
-		// The click listener needs the stream, which is the `index` controller in all
-		// three reading modes (normal, reader, global).
-		if ($controller === 'clickhistory' || $controller === 'index') {
+		// The click listener needs the stream, which is the `index` controller in
+		// all three reading modes (normal, reader, global). The extension's own
+		// pages render no article markup, so the script has nothing to do there.
+		if ($controller === 'index') {
 			Minz_View::appendScript($this->getFileUrl('script.js'));
 		}
 	}
