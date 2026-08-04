@@ -1,0 +1,68 @@
+<?php
+	declare(strict_types=1);
+	/** @var ClickHistoryView $this */
+
+	// The three state columns are labelled with the same strings as the filter
+	// links on the history page: they are the same three states, and a second set
+	// of words for them would only invite the two to drift apart.
+	$statusLabels = ClickHistoryExtension::statusLabels();
+
+	// Before <main>, like on the history page: a page with nothing on it is the one
+	// a user most needs a way off of.
+	$this->renderHelper('clickhistory/nav');
+?>
+<main class="post content click-history">
+	<h1><?= _t('ext.click_history.stats.title') ?></h1>
+
+	<div class="click-history-toolbar">
+		<a class="btn" href="<?= _url('clickhistory', 'index') ?>"><?= _t('ext.click_history.stats.back') ?></a>
+	</div>
+
+	<?php if ($this->feedStats === []) { ?>
+		<p class="alert alert-warn"><?= _t('ext.click_history.stats.empty') ?></p>
+	<?php } else { ?>
+		<div class="table-wrapper scrollbar-thin">
+			<table id="click-history-stats">
+				<thead>
+					<tr>
+						<th><?= _t('ext.click_history.columns.feed') ?></th>
+						<th><?= _t('ext.click_history.columns.category') ?></th>
+						<th class="click-history-number"><?= _t('ext.click_history.stats.columns.opened') ?></th>
+						<th class="click-history-number"><?= htmlspecialchars($statusLabels[ClickHistoryDAO::STATUS_GOOD], ENT_NOQUOTES, 'UTF-8') ?></th>
+						<th class="click-history-number"><?= htmlspecialchars($statusLabels[ClickHistoryDAO::STATUS_DROPPED], ENT_NOQUOTES, 'UTF-8') ?></th>
+						<th class="click-history-number"><?= htmlspecialchars($statusLabels[ClickHistoryDAO::STATUS_UNRATED], ENT_NOQUOTES, 'UTF-8') ?></th>
+						<th class="click-history-number"><?= _t('ext.click_history.stats.columns.worth_it') ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php foreach ($this->feedStats as $row) {
+					// null when nothing from this feed has been judged: there is no
+					// ratio then, and 0% would say something the data does not.
+					$ratio = ClickHistoryExtension::worthItRatio($row['good'], $row['dropped']);
+				?>
+					<tr>
+						<td class="click-history-feed"><?= $row['feed_name'] === ''
+							? '<span class="click-history-none">' . _t('ext.click_history.stats.no_feed') . '</span>'
+							: htmlspecialchars($row['feed_name'], ENT_NOQUOTES, 'UTF-8') ?></td>
+						<td class="click-history-category"><?= $row['category_name'] === ''
+							? '<span class="click-history-none">' . _t('ext.click_history.no_category') . '</span>'
+							: htmlspecialchars($row['category_name'], ENT_NOQUOTES, 'UTF-8') ?></td>
+						<td class="click-history-number"><?= $row['opened'] ?></td>
+						<td class="click-history-number"><?= $row['good'] ?></td>
+						<td class="click-history-number"><?= $row['dropped'] ?></td>
+						<td class="click-history-number"><?= $row['unrated'] ?></td>
+						<td class="click-history-number"><?php if ($ratio === null) { ?>
+							<span class="click-history-none" title="<?= htmlspecialchars(_t('ext.click_history.stats.no_ratio'), ENT_COMPAT, 'UTF-8') ?>">—</span>
+						<?php } else {
+							// Rounded to whole percent: the figures behind it are two- or
+							// three-digit counts, and a decimal would suggest a precision
+							// they do not have.
+							echo (int)round($ratio * 100), '%';
+						} ?></td>
+					</tr>
+				<?php } ?>
+				</tbody>
+			</table>
+		</div>
+	<?php } ?>
+</main>

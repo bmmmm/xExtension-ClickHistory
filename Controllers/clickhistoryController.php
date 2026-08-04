@@ -25,6 +25,13 @@ final class ClickHistoryView extends FreshRSS_View {
 	 *     clicked_at:int, first_clicked_at:int, status:string}>
 	 */
 	public iterable $exportRows = [];
+	/**
+	 * The figures page's rows: one per feed and category, already aggregated.
+	 *
+	 * @var list<array{feed_name:string, category_name:string, id_feed:int|null,
+	 *     opened:int, good:int, dropped:int, unrated:int}>
+	 */
+	public array $feedStats = [];
 	public int $total = 0;
 	public bool $byCategory = false;
 	/** The triage state being shown, or null for all of them. */
@@ -88,6 +95,20 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		$this->view->statusCounts = $dao->countByStatus();
 
 		FreshRSS_View::prependTitle(_t('ext.click_history.title') . ' · ');
+	}
+
+	/**
+	 * The per-feed figures the ratings exist for. Deliberately without a filter and
+	 * without pagination: the whole point is to compare feeds against one another,
+	 * which needs all of them on one screen, and there are at most as many rows as
+	 * there are feeds ever clicked.
+	 *
+	 * Auth is handled by firstAction() like everywhere else in this controller.
+	 */
+	public function statsAction(): void {
+		$this->view->feedStats = (new ClickHistoryDAO())->statsByFeed();
+
+		FreshRSS_View::prependTitle(_t('ext.click_history.stats.title') . ' · ');
 	}
 
 	/**

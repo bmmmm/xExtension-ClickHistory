@@ -67,3 +67,12 @@
 .click-history-none {
 	opacity: 0.6;
 }
+
+/* The figures page is read down its columns — which feed collected the most
+   clicks, which one was worth it — and left-aligned counts of different widths
+   do not line up to be compared. Nowrap because "100%" in a narrow column is
+   otherwise free to break after the digits. */
+.click-history-number {
+	text-align: right;
+	white-space: nowrap;
+}

@@ -32,6 +32,17 @@ return array(
 		'filter' => array(
 			'all' => 'Alle',
 		),
+		'stats' => array(
+			'title' => 'Zahlen pro Feed',
+			'back' => 'Zurück zum Verlauf',
+			'empty' => 'Noch nichts geöffnet, also nichts zu zählen. Die Zahlen erscheinen, sobald Sie einige Artikel geöffnet haben.',
+			'no_feed' => 'Kein Feed',
+			'no_ratio' => 'Aus diesem Feed wurde noch nichts bewertet',
+			'columns' => array(
+				'opened' => 'Geöffnet',
+				'worth_it' => 'Lohnt sich',
+			),
+		),
 		'action' => array(
 			'delete' => 'Löschen',
 			'clear' => 'Gesamten Verlauf löschen',

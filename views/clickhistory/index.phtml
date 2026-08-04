@@ -44,6 +44,13 @@
 				_t('ext.click_history.action.export_json') ?></a>
 			<a class="btn" href="<?= Minz_Url::display(['c' => 'clickhistory', 'a' => 'export', 'params' => $viewParams + ['format' => 'csv']]) ?>"><?=
 				_t('ext.click_history.action.export_csv') ?></a>
+			<?php
+				// Carries neither the grouping nor the filter, unlike every other link
+				// on this page: the figures are one row per feed over the whole
+				// archive, and a filtered version of them would answer a different
+				// question — "of the ones I already called good, how many are good".
+			?>
+			<a class="btn" href="<?= _url('clickhistory', 'stats') ?>"><?= _t('ext.click_history.stats.title') ?></a>
 		</div>
 
 		<?php $this->renderHelper('clickhistory/pagination'); ?>

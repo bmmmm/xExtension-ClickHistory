@@ -200,6 +200,26 @@ final class ClickHistoryExtension extends Minz_Extension {
 		];
 	}
 
+	/**
+	 * How much of what was judged from a feed turned out to be worth reading, as a
+	 * value between 0 and 1 — or null when nothing has been judged yet.
+	 *
+	 * Null rather than 0: a feed nobody has rated has no ratio, and rendering that
+	 * as 0% would read as "everything from it was a waste", which is a statement
+	 * about the reader rather than about the feed. The unrated ones are deliberately
+	 * not in the denominator either — they would drag every ratio towards zero and
+	 * only recover as the backlog is worked through, so a feed's number would move
+	 * without a single new judgement being made. The unrated column stands next to
+	 * this one instead, where the size of that backlog can be seen directly.
+	 *
+	 * In PHP rather than in SQL because "does not exist" is not a number, and any
+	 * SQL expression would have to pick one.
+	 */
+	public static function worthItRatio(int $good, int $dropped): ?float {
+		$judged = $good + $dropped;
+		return $judged === 0 ? null : $good / $judged;
+	}
+
 	/** A missing value falls back to $fallback; one out of range is pulled to the nearest bound. */
 	private static function clampInt(?int $value, int $min, int $max, int $fallback): int {
 		if ($value === null) {

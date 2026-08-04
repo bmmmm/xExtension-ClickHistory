@@ -32,6 +32,17 @@ return array(
 		'filter' => array(
 			'all' => 'All',
 		),
+		'stats' => array(
+			'title' => 'Feed figures',
+			'back' => 'Back to the history',
+			'empty' => 'Nothing opened yet, so there is nothing to count. The figures appear once you have opened a few articles.',
+			'no_feed' => 'No feed',
+			'no_ratio' => 'Nothing from this feed has been judged yet',
+			'columns' => array(
+				'opened' => 'Opened',
+				'worth_it' => 'Worth it',
+			),
+		),
 		'action' => array(
 			'delete' => 'Delete',
 			'clear' => 'Delete the whole history',
