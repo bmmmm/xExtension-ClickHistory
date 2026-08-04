@@ -132,7 +132,7 @@ $check(
 
 // The real upsert, with the real bindings. Recorded, judged, then opened again —
 // the case the ON CONFLICT / ON DUPLICATE KEY clause exists for.
-/** @param array<string,string|int> $values */
+/** @param array<string,string|int|null> $values */
 $record = static function (array $values) use ($pdo, $prepareSql, $dbType, $fresh): void {
 	$stm = $pdo->prepare($prepareSql(ClickHistorySchema::record($dbType), $fresh));
 	if ($stm === false) {
@@ -140,7 +140,15 @@ $record = static function (array $values) use ($pdo, $prepareSql, $dbType, $fres
 		exit(1);
 	}
 	foreach ($values as $name => $value) {
-		$stm->bindValue(':' . $name, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+		// null is bound as null rather than as an empty string: `id_feed` is
+		// nullable and the per-feed figures have to survive a row that has none.
+		$type = PDO::PARAM_STR;
+		if ($value === null) {
+			$type = PDO::PARAM_NULL;
+		} elseif (is_int($value)) {
+			$type = PDO::PARAM_INT;
+		}
+		$stm->bindValue(':' . $name, $value, $type);
 	}
 	if (!$stm->execute()) {
 		fwrite(STDERR, 'cannot record: ' . json_encode($stm->errorInfo()) . "\n");
@@ -245,6 +253,85 @@ $check(
 	array_sum($totals) === 3 && ($totals['good'] ?? 0) === 1
 		&& ($totals['dropped'] ?? 0) === 1 && ($totals['unrated'] ?? 0) === 1
 );
+
+// --- The per-feed figures ----------------------------------------------------
+// One GROUP BY carrying three counts and an aggregate id, executed rather than
+// reasoned about: SUM(CASE WHEN …) and an alias in ORDER BY are meant to read the
+// same on all three backends, which is a claim only this run can settle.
+//
+// A second feed, so that the ordering has something to order; one of its rows
+// without an id_feed, so that MAX() has a NULL to ignore; and the first feed
+// clicked again under a second category, which is what a feed that has been moved
+// leaves behind — the category in this table is a copy taken at click time, so
+// that feed is two rows and not one.
+
+$record([
+	'id_entry' => '4', 'url' => 'http://d', 'title' => 'D', 'feed_name' => 'Other feed',
+	'id_feed' => 2, 'category_name' => 'Cat', 'id_category' => 1,
+	'clicked_at' => 500, 'first_clicked_at' => 500, 'status' => 'good',
+]);
+$record([
+	'id_entry' => '5', 'url' => 'http://e', 'title' => 'E', 'feed_name' => 'Other feed',
+	'id_feed' => null, 'category_name' => 'Cat', 'id_category' => 1,
+	'clicked_at' => 600, 'first_clicked_at' => 600, 'status' => 'good',
+]);
+$record([
+	'id_entry' => '6', 'url' => 'http://f', 'title' => 'F', 'feed_name' => 'Feed',
+	'id_feed' => 1, 'category_name' => 'Moved', 'id_category' => 2,
+	'clicked_at' => 700, 'first_clicked_at' => 700, 'status' => 'unrated',
+]);
+
+// The DAO's own statement, bound the way the DAO binds it.
+/** @return list<array<string,mixed>> */
+$figures = static function () use ($pdo, $prepareSql, $fresh): array {
+	$stm = $pdo->prepare($prepareSql(ClickHistorySchema::statsByFeed(), $fresh));
+	if ($stm === false) {
+		fwrite(STDERR, 'cannot prepare the figures statement: ' . json_encode($pdo->errorInfo()) . "\n");
+		exit(1);
+	}
+	$stm->bindValue(':good', 'good', PDO::PARAM_STR);
+	$stm->bindValue(':dropped', 'dropped', PDO::PARAM_STR);
+	if (!$stm->execute()) {
+		fwrite(STDERR, 'cannot read the figures: ' . json_encode($stm->errorInfo()) . "\n");
+		exit(1);
+	}
+	return $stm->fetchAll(PDO::FETCH_ASSOC) ?: [];
+};
+
+$perFeed = [];
+$feedOrder = [];
+$openedTotal = 0;
+foreach ($figures() as $figureRow) {
+	if (!is_array($figureRow)) {
+		continue;
+	}
+	$opened = (int)$asString($figureRow['opened'] ?? null);
+	$openedTotal += $opened;
+	$good = (int)$asString($figureRow['good'] ?? null);
+	$dropped = (int)$asString($figureRow['dropped'] ?? null);
+	$feedOrder[] = $asString($figureRow['feed_name'] ?? null) . '/' . $asString($figureRow['category_name'] ?? null);
+	$perFeed[] = implode('|', [
+		$asString($figureRow['feed_name'] ?? null),
+		$asString($figureRow['category_name'] ?? null),
+		$asString($figureRow['id_feed'] ?? null),
+		$opened, $good, $dropped,
+		// The arithmetic the DAO does on top of this row: whatever is neither good
+		// nor dropped counts as unrated, so the three always add up to `opened`.
+		$opened - $good - $dropped,
+	]);
+}
+
+$check('a feed that moved category is one row per combination', $feedOrder === ['Feed/Cat', 'Other feed/Cat', 'Feed/Moved']);
+$check('the grouped counts, most opened first', $perFeed === [
+	// feed | category | id_feed | opened | good | dropped | unrated
+	'Feed|Cat|1|3|1|1|1',
+	// MAX() over a row that has an id and one that has none still yields the id.
+	'Other feed|Cat|2|2|2|0|0',
+	'Feed|Moved|1|1|0|0|1',
+]);
+// The grouping is the whole table seen from another angle, so nothing may fall
+// out of it — a row with a feed name nobody expected included.
+$check('the figures account for every row in the table', $openedTotal === $counted(null) && $openedTotal === 6);
 
 // --- An installation upgrading from an earlier version -----------------------
 // The old CREATE TABLE is written out here rather than obtained from the code:

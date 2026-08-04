@@ -21,6 +21,8 @@ require_once __DIR__ . '/ClickHistorySchema.php';
  * @phpstan-type ClickHistoryRow array{id_entry:string, url:string, title:string,
  *     feed_name:string, id_feed:int|null, category_name:string, id_category:int|null,
  *     clicked_at:int, first_clicked_at:int, status:string}
+ * @phpstan-type ClickHistoryFeedStats array{feed_name:string, category_name:string,
+ *     id_feed:int|null, opened:int, good:int, dropped:int, unrated:int}
  */
 final class ClickHistoryDAO extends Minz_ModelPdo {
 	/**
@@ -269,6 +271,64 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			$counts[$status] += is_numeric($row['total'] ?? null) ? (int)$row['total'] : 0;
 		}
 		return $counts;
+	}
+
+	/**
+	 * What each feed has cost and returned: one row per feed and category, with the
+	 * clicks it collected and how they were judged. This is what the rating buttons
+	 * are for — without it they are three clicks that lead nowhere.
+	 *
+	 * Not paginated and not filtered: there is one row per feed ever clicked, which
+	 * is bounded by the number of subscriptions rather than by the size of the
+	 * history, and every state has to be in it for the figures to mean anything.
+	 *
+	 * The statement itself is ClickHistorySchema::statsByFeed().
+	 *
+	 * @return list<ClickHistoryFeedStats>
+	 */
+	public function statsByFeed(): array {
+		if (!$this->ensureTableExists()) {
+			return [];
+		}
+		$stm = $this->pdo->prepare(ClickHistorySchema::statsByFeed());
+		if ($stm === false ||
+			!$stm->bindValue(':good', self::STATUS_GOOD, PDO::PARAM_STR) ||
+			!$stm->bindValue(':dropped', self::STATUS_DROPPED, PDO::PARAM_STR) ||
+			!$stm->execute()) {
+			$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
+			Minz_Log::error('ClickHistory: cannot count by feed: ' . json_encode($info));
+			return [];
+		}
+
+		$rows = [];
+		/** @var array<string,mixed> $row */
+		foreach ($stm->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+			$rows[] = self::normaliseStatsRow($row);
+		}
+		return $rows;
+	}
+
+	/**
+	 * @param array<string,mixed> $row
+	 * @return ClickHistoryFeedStats
+	 */
+	private static function normaliseStatsRow(array $row): array {
+		$opened = is_numeric($row['opened'] ?? null) ? (int)$row['opened'] : 0;
+		$good = is_numeric($row['good'] ?? null) ? (int)$row['good'] : 0;
+		$dropped = is_numeric($row['dropped'] ?? null) ? (int)$row['dropped'] : 0;
+		return [
+			'feed_name' => is_scalar($row['feed_name'] ?? null) ? (string)$row['feed_name'] : '',
+			'category_name' => is_scalar($row['category_name'] ?? null) ? (string)$row['category_name'] : '',
+			'id_feed' => is_numeric($row['id_feed'] ?? null) ? (int)$row['id_feed'] : null,
+			'opened' => $opened,
+			'good' => $good,
+			'dropped' => $dropped,
+			// The remainder rather than a third SUM in the query: a status value
+			// nobody here wrote — hand-edited, or left by a later version — is folded
+			// into unrated by normaliseStatus() everywhere else, and counting it any
+			// other way would leave the three columns not adding up to `opened`.
+			'unrated' => $opened - $good - $dropped,
+		];
 	}
 
 	/** An unknown value — hand-edited, or written by a later version — reads as unrated. */

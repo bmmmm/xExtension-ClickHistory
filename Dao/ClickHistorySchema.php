@@ -193,4 +193,45 @@ final class ClickHistorySchema {
 	public static function statusClause(?string $status): string {
 		return $status === null ? '' : 'WHERE status = :status';
 	}
+
+	/**
+	 * The figures behind the per-feed page: how often something from a feed was
+	 * opened, and how those clicks were judged. `:good` and `:dropped` are the two
+	 * status values, bound by the caller.
+	 *
+	 * No dialect branching, deliberately: COUNT, SUM(CASE WHEN … THEN 1 ELSE 0 END)
+	 * and an alias in ORDER BY are plain SQL that MySQL, PostgreSQL and SQLite all
+	 * read the same way, so this one string is what runs everywhere.
+	 *
+	 * Grouped by `feed_name` *and* `category_name`, because the category in this
+	 * table is a copy taken at the moment of the click rather than a reference: a
+	 * feed that has since moved has rows carrying either name, and folding them
+	 * together would credit clicks to a category they were never made under. Such
+	 * a feed shows up as one row per combination, which is what the archive
+	 * actually says happened.
+	 *
+	 * `id_feed` is aggregated rather than grouped by, and for the same reason:
+	 * grouping by it would split a feed whose earliest rows carry no id at all, and
+	 * MAX() ignores those NULLs and still yields the id. It is in the result for a
+	 * caller that wants it; the figures page deliberately does not link it, since
+	 * core's stream answers 404 for a feed that no longer exists — which is exactly
+	 * the feed whose figures this table still has.
+	 *
+	 * Only `good` and `dropped` are counted here. The unrated ones are the
+	 * remainder, worked out by the caller: an unknown status value has to land
+	 * where ClickHistoryDAO::normaliseStatus() puts it, or the columns would stop
+	 * adding up to the row's own `opened`. The worth-it ratio is not here either —
+	 * it does not exist when nothing has been judged, and SQL would have to invent
+	 * a number for that case.
+	 */
+	public static function statsByFeed(): string {
+		return <<<'SQL'
+			SELECT feed_name, category_name, MAX(id_feed) AS id_feed, COUNT(*) AS opened,
+				SUM(CASE WHEN status = :good THEN 1 ELSE 0 END) AS good,
+				SUM(CASE WHEN status = :dropped THEN 1 ELSE 0 END) AS dropped
+			FROM `_click_history`
+			GROUP BY feed_name, category_name
+			ORDER BY opened DESC, feed_name ASC, category_name ASC
+			SQL;
+	}
 }
