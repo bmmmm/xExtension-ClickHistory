@@ -32,19 +32,6 @@
 		</div>
 	</div>
 
-	<div class="form-group">
-		<label class="group-name" for="default_status"><?= _t('ext.click_history.conf.default_status') ?></label>
-		<div class="group-controls">
-			<select name="default_status" id="default_status">
-				<?php foreach (ClickHistoryExtension::statusLabels() as $status => $label) { ?>
-					<option value="<?= $status ?>"<?= $settings['default_status'] === $status ? ' selected="selected"' : '' ?>><?=
-						htmlspecialchars($label, ENT_NOQUOTES, 'UTF-8') ?></option>
-				<?php } ?>
-			</select>
-			<p class="help"><?= _t('ext.click_history.conf.default_status_help') ?></p>
-		</div>
-	</div>
-
 	<div class="form-group form-actions">
 		<div class="group-controls">
 			<button type="submit" class="btn btn-important"><?= _t('gen.action.submit') ?></button>

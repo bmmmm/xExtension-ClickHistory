@@ -43,10 +43,6 @@ return array(
 			'track_clicks_help' => 'Solange dies aus ist, wird nichts aufgezeichnet. Der bereits vorhandene Verlauf bleibt erhalten.',
 			'page_size' => 'Einträge pro Seite',
 			'page_size_help' => 'Zwischen %d und %d.',
-			'default_status' => 'Zustand eines neu geöffneten Artikels',
-			'default_status_help' => 'Als was ein Artikel gilt, bis Sie ihn auf der Verlaufsseite bewerten. ' .
-				'»Verworfen« hält ihn nur aus dem Blickfeld, bis Sie ihn hochstufen; ' .
-				'um gar nichts aufzuzeichnen, schalten Sie die Einstellung darüber aus.',
 		),
 	),
 );

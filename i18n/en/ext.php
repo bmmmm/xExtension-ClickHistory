@@ -43,10 +43,6 @@ return array(
 			'track_clicks_help' => 'While this is off, nothing is recorded. The history that already exists is kept.',
 			'page_size' => 'Entries per page',
 			'page_size_help' => 'Between %d and %d.',
-			'default_status' => 'State of a newly opened article',
-			'default_status_help' => 'What an article counts as until you judge it on the history page. ' .
-				'Dropped means an article is only kept out of the way until you promote it; ' .
-				'to record nothing at all, switch off the setting above.',
 		),
 	),
 );

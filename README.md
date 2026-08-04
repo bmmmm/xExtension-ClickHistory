@@ -94,7 +94,6 @@ Under *Configuration → Extensions → Click History*:
 |---|---|---|
 | Record opened articles | on | While off, nothing is recorded and the browser sends no requests. The history that already exists is kept. |
 | Entries per page | 50 | Between 10 and 500. |
-| State of a newly opened article | Unrated | What a click leaves behind until you judge it. *Dropped* makes the history a list you promote entries onto instead of one you weed; it still records every click, so the counts stay honest. To record nothing at all, use the first setting — not this one. |
 
 There is deliberately no retention setting: the history is kept until you delete
 it. Deleting is manual, per entry or all at once.

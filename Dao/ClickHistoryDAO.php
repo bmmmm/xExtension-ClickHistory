@@ -109,7 +109,6 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		string $categoryName,
 		?int $idCategory,
 		int $timestamp,
-		string $status = self::STATUS_UNRATED
 	): bool {
 		if (!$this->ensureTableExists()) {
 			return false;
@@ -129,7 +128,9 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			$stm->bindValue(':id_category', $idCategory, $idCategory === null ? PDO::PARAM_NULL : PDO::PARAM_INT) &&
 			$stm->bindValue(':clicked_at', $timestamp, PDO::PARAM_INT) &&
 			$stm->bindValue(':first_clicked_at', $timestamp, PDO::PARAM_INT) &&
-			$stm->bindValue(':status', self::normaliseStatus($status), PDO::PARAM_STR) &&
+			// Only ever used for a row that does not exist yet: the upsert leaves
+			// the status of an already-judged article alone.
+			$stm->bindValue(':status', self::STATUS_UNRATED, PDO::PARAM_STR) &&
 			$stm->execute()) {
 			return true;
 		}

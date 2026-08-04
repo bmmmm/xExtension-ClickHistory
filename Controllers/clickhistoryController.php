@@ -201,9 +201,6 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			$category === null ? '' : html_entity_decode($category->name(), ENT_QUOTES, 'UTF-8'),
 			$category?->id(),
 			time(),
-			// Only ever used for a row that does not exist yet: the upsert leaves the
-			// status of an already-judged article alone.
-			$this->settings()['default_status'],
 		);
 
 		if (!$ok) {
@@ -263,14 +260,14 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		return in_array($status, ClickHistoryDAO::STATUSES, true) ? $status : null;
 	}
 
-	/** @return array{track_clicks:bool, page_size:int, default_status:string} */
+	/** @return array{track_clicks:bool, page_size:int} */
 	private function settings(): array {
 		$extension = ClickHistoryExtension::instance();
 		// The controller is only reachable while the extension is enabled, so the
 		// null branch is unreachable in practice; the defaults keep the page
 		// working rather than fataling if that ever stops being true.
 		return $extension === null
-			? ['track_clicks' => true, 'page_size' => 50, 'default_status' => ClickHistoryDAO::STATUS_UNRATED]
+			? ['track_clicks' => true, 'page_size' => 50]
 			: $extension->settings();
 	}
 }
