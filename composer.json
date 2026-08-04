@@ -2,7 +2,7 @@
 	"name": "bmmmm/xextension-clickhistory",
 	"description": "Dev tooling (PHPStan, PHP_CodeSniffer) for the Click History FreshRSS extension",
 	"type": "project",
-	"license": "AGPL-3.0",
+	"license": "AGPL-3.0-only",
 	"require": {
 		"php": ">=8.1"
 	},

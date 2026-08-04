@@ -3,7 +3,7 @@
 	"name": "xextension-clickhistory",
 	"private": true,
 	"description": "Linting for the Click History FreshRSS extension",
-	"license": "AGPL-3.0",
+	"license": "AGPL-3.0-only",
 	"engines": {
 		"node": ">=24"
 	},

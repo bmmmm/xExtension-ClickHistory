@@ -75,8 +75,10 @@ Everything else is covered: left click, middle click, and the keyboard shortcut.
 Requires **FreshRSS 1.29.0 or newer**. CI analyses the extension against exactly
 that release, so this is a checked property rather than a claim.
 
-1. Download this repository and place the `xExtension-ClickHistory` directory
-   into the `extensions/` directory of your FreshRSS installation.
+1. Download the [latest release](https://github.com/bmmmm/xExtension-ClickHistory/releases/latest)
+   and place the `xExtension-ClickHistory` directory into the `extensions/`
+   directory of your FreshRSS installation. The default branch is where work in
+   progress lands, so a release is the version that was actually checked.
 2. Enable **Click History** under *Configuration → Extensions*.
 
 Enabling it creates one table (`click_history`, with your installation's usual
@@ -229,7 +231,7 @@ the next one.
 
 ## Licence
 
-[AGPL-3.0](LICENSE), matching FreshRSS itself.
+[AGPL-3.0-only](LICENSE), matching FreshRSS itself.
 
 ## Support
 
