@@ -39,6 +39,7 @@ return array(
 			'export_csv' => 'Als CSV herunterladen',
 		),
 		'conf' => array(
+			'where_help' => 'Der Verlauf ist eine eigene Seite und über das Kopfmenü (oben rechts, Zahnrad) erreichbar — oder direkt öffnen:',
 			'track_clicks' => 'Geöffnete Artikel aufzeichnen',
 			'track_clicks_help' => 'Solange dies aus ist, wird nichts aufgezeichnet. Der bereits vorhandene Verlauf bleibt erhalten.',
 			'page_size' => 'Einträge pro Seite',

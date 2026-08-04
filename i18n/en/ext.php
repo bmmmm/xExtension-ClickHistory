@@ -39,6 +39,7 @@ return array(
 			'export_csv' => 'Download as CSV',
 		),
 		'conf' => array(
+			'where_help' => 'The history is a page of its own, in the header menu (top right, gear icon) next to “Logs” and “About” — or open it directly:',
 			'track_clicks' => 'Record opened articles',
 			'track_clicks_help' => 'While this is off, nothing is recorded. The history that already exists is kept.',
 			'page_size' => 'Entries per page',

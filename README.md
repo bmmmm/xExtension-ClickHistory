@@ -20,8 +20,12 @@ This extension records that one gesture and nothing else.
   headline of an expanded article, and the link icon in the footer — plus
   middle-clicks and the core's <kbd>go to website</kbd> shortcut.
 * Shows the collection under **Click history**: headline, feed, category, when
-  it was last opened, one page at a time. Reachable from the **Click history**
-  entry in the header menu, next to *Logs* and *About*.
+  it was last opened, one page at a time.
+* **Where to find it:** the **Click history** entry in the header menu — the
+  gear icon at the top right, next to *Logs* and *About*. The extension's
+  settings page links there directly too. There is deliberately no toolbar
+  button (removed in 0.5.0): the menu entry is rendered server-side by core,
+  which keeps the extension independent of core's toolbar markup.
 * Groups by category on request, or stays in plain chronological order.
 * Lets you say afterwards whether an article was worth it: **Good**, **Dropped**,
   or left **Unrated**. Filter links across the top switch between those states
