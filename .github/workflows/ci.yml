@@ -3,6 +3,9 @@ name: Tests
 on:
   push:
     branches: [main]
+    # Tags run the whole job too, plus the version check below: a release is the
+    # one push nobody gets to redo.
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -49,6 +52,19 @@ jobs:
         run: |
           python3 -c "import json,sys; d=json.load(open('metadata.json')); \
             [sys.exit('missing key: ' + k) for k in ('name','entrypoint','type','version','url') if k not in d]"
+
+      # Only on a tag. FreshRSS shows metadata.json's version in the extensions
+      # screen and compares it against the community list to decide whether an
+      # update is available, so a tag that says one thing while the file says
+      # another leaves every installation believing it is up to date.
+      - name: Check the tag matches the version in metadata.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          version=$(python3 -c "import json; print(json.load(open('metadata.json'))['version'])")
+          echo "tag=${tag} metadata.json version=${version}"
+          test "$tag" = "v${version}" \
+            || { echo "tag ${tag} does not match metadata.json version ${version} (expected v${version})"; exit 1; }
 
       - name: Check the entrypoint matches the class name
         run: |
