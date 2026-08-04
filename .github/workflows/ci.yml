@@ -36,7 +36,8 @@ jobs:
       # The schema upgrade runs exactly once per installation, so a broken one is
       # invisible until it has already cost somebody their history. Exercised
       # against real SQLite rather than mocked: what is being checked is what the
-      # database does with those statements.
+      # database does with those statements. The MySQL and PostgreSQL variants of
+      # the same statements run in the `schema` job below.
       - name: Check the schema upgrade and the upsert
         run: php tests/schema.php
 
@@ -202,3 +203,79 @@ jobs:
       - name: Static analysis (PHPStan)
         if: ${{ !cancelled() }}
         run: vendor/bin/phpstan analyse --no-progress
+
+  # The extension writes three dialects of the same schema and the development
+  # installation only ever runs one of them. SQLite is covered in the job above,
+  # where it costs nothing; these two need a server, so they get one. Without this
+  # the MySQL and PostgreSQL statements ship as prose that has never been executed
+  # — which is exactly how a CREATE TABLE that only one backend accepts reaches a
+  # stranger's installation.
+  schema:
+    runs-on: ubuntu-latest
+    strategy:
+      # Both legs always run: knowing that one dialect is broken says nothing
+      # about the other, and finding out one release later is the whole problem.
+      fail-fast: false
+      matrix:
+        include:
+          - backend: mysql
+            dsn: 'mysql:host=127.0.0.1;port=3306;dbname=clickhistory'
+            user: root
+            password: clickhistory
+            extension: pdo_mysql
+          - backend: pgsql
+            dsn: 'pgsql:host=127.0.0.1;port=5432;dbname=clickhistory'
+            user: postgres
+            password: clickhistory
+            extension: pdo_pgsql
+    # Both servers start for both legs: a service block cannot be selected by the
+    # matrix, and one idle container is cheaper than splitting this into two jobs
+    # that would then drift apart. The passwords are literals on purpose — these
+    # containers exist for the length of one job and hold nothing but a table this
+    # file's own test creates and drops.
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: clickhistory
+          MYSQL_DATABASE: clickhistory
+        ports:
+          - 3306:3306
+        # The container answers on the port before the server will accept a
+        # connection, so the job has to wait for the server rather than the socket.
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: clickhistory
+          POSTGRES_DB: clickhistory
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - name: Git checkout source code
+        uses: actions/checkout@v7
+
+      # Same floor as the lint job, plus the driver for this leg. setup-php builds
+      # neither by default.
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: ${{ matrix.extension }}
+          coverage: none
+
+      - name: Check the schema upgrade and the upsert on ${{ matrix.backend }}
+        env:
+          CLICKHISTORY_TEST_DSN: ${{ matrix.dsn }}
+          CLICKHISTORY_TEST_USER: ${{ matrix.user }}
+          CLICKHISTORY_TEST_PASSWORD: ${{ matrix.password }}
+        run: php tests/schema.php

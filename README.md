@@ -109,12 +109,16 @@ there would mean one accidental click destroys the whole archive. Use the
 | Backend | Status |
 |---|---|
 | SQLite | Verified end to end |
-| MySQL / MariaDB | Written against the core schema, not executed |
-| PostgreSQL | Written against the core schema, not executed |
+| MySQL / MariaDB | Schema and upsert executed in CI against `mysql:8`; not run inside a FreshRSS installation |
+| PostgreSQL | Schema and upsert executed in CI against `postgres:16`; not run inside a FreshRSS installation |
 
-The MySQL and PostgreSQL statements follow FreshRSS' own schema files for those
-dialects, but they have not been run — the development installation is SQLite.
-If you hit a problem on one of them, that is where to look first.
+CI runs `tests/schema.php` against all three: it executes the extension's real
+CREATE TABLE, ALTER TABLE and upsert statements — the same strings the running
+code uses, not a copy — so a statement only one backend accepts fails the build
+instead of a stranger's install. What is still SQLite-only is the layer above:
+the development installation is SQLite, so the DAO, the page and the export have
+only been exercised there. If you hit a problem on MySQL or PostgreSQL, that is
+where to look first.
 
 ## Security
 
@@ -159,7 +163,10 @@ The page itself needs no markup of core's: it is reached through the
 # JavaScript tests (click detection and the once-per-load guard)
 node --test tests/*.test.js
 
-# Schema upgrade and upsert, against real SQLite
+# Schema upgrade and upsert, against a real database (in-memory SQLite by
+# default). CI additionally runs this against mysql:8 and postgres:16:
+#   CLICKHISTORY_TEST_DSN='mysql:host=127.0.0.1;dbname=clickhistory' \
+#     CLICKHISTORY_TEST_USER=root CLICKHISTORY_TEST_PASSWORD=… php tests/schema.php
 php tests/schema.php
 
 # JavaScript style (ESLint, aligned with FreshRSS core's own eslint.config.js)
