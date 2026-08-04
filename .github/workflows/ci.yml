@@ -156,15 +156,20 @@ jobs:
           # rather than `tests/`: newer Node reads a bare directory as a module
           # path and reports zero tests.
           node --test --test-reporter=tap tests/*.test.js | tee test.log
-          # `node --test` exits 0 on a skipped run, and an empty file still
-          # reports `# pass 1`, so count the cases that are meant to run.
-          expected=$(cat tests/*.test.js | grep -c '^test(')
+          # `node --test` exits 0 on a run where everything was skipped, and on a
+          # run that found no files at all, so the counts are read back.
+          #
+          # Deliberately not compared against `grep -c '^test('`: that number is a
+          # property of how the tests are written, not of what ran. A `test()` call
+          # inside a loop or a helper, or one wrapped in a describe(), makes the two
+          # disagree while everything is passing — a guard that goes off when the
+          # tests are fine gets deleted, and then nothing checks the real failure
+          # mode. "Nothing was skipped and something ran" is that failure mode.
           passed=$(sed -n 's/^# pass \([0-9]*\)$/\1/p' test.log)
           skipped=$(sed -n 's/^# skipped \([0-9]*\)$/\1/p' test.log)
-          echo "expected=${expected} passed=${passed:-0} skipped=${skipped:-0}"
-          test "${passed:-0}" -eq "${expected}" \
-            || { echo "expected ${expected} passing tests, got ${passed:-0}"; exit 1; }
+          echo "passed=${passed:-0} skipped=${skipped:-0}"
           test "${skipped:-0}" -eq 0 || { echo 'a test was skipped'; exit 1; }
+          test "${passed:-0}" -gt 0 || { echo 'no test ran at all'; exit 1; }
 
       - name: Check JavaScript style (ESLint)
         if: ${{ !cancelled() }}
