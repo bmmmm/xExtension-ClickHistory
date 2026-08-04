@@ -35,8 +35,22 @@ final class ClickHistoryExtension extends Minz_Extension {
 		$this->registerHook(Minz_HookType::JsVars, [$this, 'jsVars']);
 		$this->registerHook(Minz_HookType::MenuOtherEntry, [$this, 'menuEntry']);
 
-		Minz_View::appendStyle($this->getFileUrl('style.css'));
-		Minz_View::appendScript($this->getFileUrl('script.js'));
+		// Both assets used to be appended to every page in the installation. The
+		// routing has already happened by the time an extension is enabled for the
+		// user (Minz_FrontController's constructor runs before FreshRSS::init()), so
+		// the controller name is known here and each file can be limited to the
+		// pages it does anything on.
+		$controller = Minz_Request::controllerName();
+		// Every rule in the stylesheet is under `.click-history*`, which exists
+		// nowhere but this extension's own page.
+		if ($controller === 'clickhistory') {
+			Minz_View::appendStyle($this->getFileUrl('style.css'));
+		}
+		// The click listener needs the stream, which is the `index` controller in all
+		// three reading modes (normal, reader, global).
+		if ($controller === 'clickhistory' || $controller === 'index') {
+			Minz_View::appendScript($this->getFileUrl('script.js'));
+		}
 	}
 
 	#[\Override]
