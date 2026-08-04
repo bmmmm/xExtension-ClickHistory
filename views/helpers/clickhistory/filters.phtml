@@ -16,7 +16,7 @@
 	$total = array_sum($this->statusCounts);
 	$filters = [[null, _t('ext.click_history.filter.all') . ' (' . $total . ')']];
 	foreach (ClickHistoryDAO::STATUSES as $status) {
-		$filters[] = [$status, ($labels[$status] ?? $status)
+		$filters[] = [$status, $labels[$status]
 			. ' (' . ($this->statusCounts[$status] ?? 0) . ')'];
 	}
 

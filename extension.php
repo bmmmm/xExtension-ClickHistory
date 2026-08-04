@@ -171,7 +171,11 @@ final class ClickHistoryExtension extends Minz_Extension {
 	 * the extension asks for exists in every language (.github/workflows/ci.yml),
 	 * so a missing translation would only show up as the raw key on the page.
 	 *
-	 * @return array<string,string>
+	 * The shape rather than array<string,string>: every caller indexes it with one
+	 * of the three states, so spelling the keys out is what lets that be a direct
+	 * lookup instead of one guarded by a fallback that can never be reached.
+	 *
+	 * @return array{unrated:string, good:string, dropped:string}
 	 */
 	public static function statusLabels(): array {
 		return [
@@ -181,7 +185,7 @@ final class ClickHistoryExtension extends Minz_Extension {
 		];
 	}
 
-	/** @return array<string,string> */
+	/** @return array{good:string, dropped:string} */
 	public static function rateTitles(): array {
 		return [
 			ClickHistoryDAO::STATUS_GOOD => _t('ext.click_history.rate.good'),

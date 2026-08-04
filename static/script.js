@@ -77,8 +77,12 @@
 		if (!flux) {
 			return null;
 		}
+		// No `flux.contains(link)` check: both are closest() results from the same
+		// target, so the link is always an ancestor-or-self of that target and the
+		// flux is always an ancestor of the link — the containment is what closest()
+		// already established.
 		const link = ev.target.closest(MAIN_LINK_SELECTOR);
-		if (!link || !flux.contains(link) || link.closest('.text') !== null) {
+		if (!link || link.closest('.text') !== null) {
 			return null;
 		}
 		return flux;

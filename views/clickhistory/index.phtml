@@ -133,7 +133,7 @@
 										$isCurrent = $item['status'] === $status;
 										$title = $isCurrent
 											? _t('ext.click_history.rate.undo')
-											: ($rateTitles[$status] ?? '');
+											: $rateTitles[$status];
 										// btn-important on top of .active: the rating is what the row
 										// says, not merely which control is engaged, so it has to read
 										// at a glance. Core's .active alone is a few percent of
@@ -148,7 +148,7 @@
 											class="btn<?= $isCurrent ? ' btn-important active' : '' ?>"
 											aria-pressed="<?= $isCurrent ? 'true' : 'false' ?>"
 											title="<?= htmlspecialchars($title, ENT_COMPAT, 'UTF-8') ?>"><?=
-											htmlspecialchars($statusLabels[$status] ?? $status, ENT_NOQUOTES, 'UTF-8') ?></button>
+											htmlspecialchars($statusLabels[$status], ENT_NOQUOTES, 'UTF-8') ?></button>
 										<?php
 									}
 								?>

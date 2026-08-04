@@ -33,7 +33,7 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	public const STATUS_GOOD = 'good';
 	public const STATUS_DROPPED = 'dropped';
 
-	/** @var list<string> */
+	/** @var list<'unrated'|'good'|'dropped'> */
 	public const STATUSES = [self::STATUS_UNRATED, self::STATUS_GOOD, self::STATUS_DROPPED];
 
 	/**
