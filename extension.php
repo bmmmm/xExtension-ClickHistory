@@ -77,6 +77,10 @@ final class ClickHistoryExtension extends Minz_Extension {
 		$this->setUserConfigurationValue('page_size', self::clampInt(
 			Minz_Request::paramIntNull('page_size'), self::PAGE_SIZE_MIN, self::PAGE_SIZE_MAX, $current['page_size'],
 		));
+		// TODO: whether this setting should exist at all is an open question — see
+		// TODO.md. Removing it takes this branch, the one in settings(), the select
+		// in configure.phtml, the parameter threaded into ClickHistoryDAO::record()
+		// and four strings per language with it.
 		$submitted = Minz_Request::paramString('default_status');
 		$this->setUserConfigurationValue('default_status', in_array($submitted, ClickHistoryDAO::STATUSES, true)
 			? $submitted : $current['default_status']);
