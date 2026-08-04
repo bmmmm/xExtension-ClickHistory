@@ -14,5 +14,7 @@ yarn.lock
 # Tooling scratch space (agent worktrees, local settings).
 .claude/
 # Local repo setup only. It points at the private forge and the local
-# credential store, neither of which belongs in a public mirror.
-scripts/
+# credential store, neither of which belongs in a public mirror. Named rather
+# than ignoring scripts/ wholesale, so a script worth shipping can simply be
+# added there.
+scripts/setup-claude-identity.sh
