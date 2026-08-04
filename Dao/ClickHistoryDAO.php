@@ -37,15 +37,24 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	public const STATUSES = [self::STATUS_UNRATED, self::STATUS_GOOD, self::STATUS_DROPPED];
 
 	/**
-	 * Once per process: install() creates the table, but an installation where
-	 * that never ran (enabled by hand, restored from a backup) would otherwise
-	 * fail on every single request instead of repairing itself once.
+	 * Once per process and per table: install() creates the table, but an
+	 * installation where that never ran (enabled by hand, restored from a backup)
+	 * would otherwise fail on every single request instead of repairing itself once.
+	 *
+	 * Keyed by the PDO prefix rather than a plain flag, because `_click_history` is
+	 * a different table per user on MySQL and PostgreSQL (`<prefix><user>_`). One
+	 * process serving two users — a CLI run over every account, or any setup where
+	 * a request switches context — would otherwise take the first user's table as
+	 * proof that the second one's exists.
+	 *
+	 * @var array<string,true>
 	 */
-	private static bool $tableChecked = false;
+	private static array $tableChecked = [];
 
 	/** @return bool false if the table is missing and could not be created */
 	public function ensureTableExists(): bool {
-		if (self::$tableChecked) {
+		$key = $this->pdo->prefix();
+		if (isset(self::$tableChecked[$key])) {
 			return true;
 		}
 		foreach ($this->createTableSql() as $sql) {
@@ -60,7 +69,7 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			!$this->ensureColumns('status', $this->addStatusColumnSql())) {
 			return false;
 		}
-		self::$tableChecked = true;
+		self::$tableChecked[$key] = true;
 		return true;
 	}
 
