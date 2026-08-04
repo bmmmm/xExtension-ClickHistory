@@ -11,6 +11,23 @@ Entries for 0.3.0 and 0.3.1 were written afterwards, from the git history: this
 file was added later than the releases it describes. Versions 0.1.0 and 0.2.0
 existed in `metadata.json` during development but were never tagged or released.
 
+## [Unreleased]
+
+### Added
+
+- A **Feed figures** page, reached from the button in the history page's toolbar:
+  one row per feed with how often something from it was opened and how those
+  clicks were judged — good, dropped, still unrated — plus the share of the
+  judged ones that turned out to be worth it. This is what the rating buttons
+  were for; until now they were three clicks that led nowhere. A feed nobody has
+  rated yet shows a dash rather than 0%, since "nothing judged" is not a ratio,
+  and the unrated ones stay out of the denominator so that working through the
+  backlog does not move a feed's number on its own.
+- `tests/schema.php` runs the aggregation behind that page against the schema on
+  all three backends, including the case of a feed that has moved category — the
+  category in the table is a copy taken at click time, so such a feed is one row
+  per combination rather than one row.
+
 ## [0.5.1] - 2026-08-04
 
 ### Changed
@@ -106,6 +123,7 @@ existed in `metadata.json` during development but were never tagged or released.
 - A confirmation wording the core can never show was dropped rather than left in
   place looking as if it worked.
 
+[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.1...HEAD
 [0.5.1]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.3.1...v0.4.0

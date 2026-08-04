@@ -34,6 +34,13 @@ This extension records that one gesture and nothing else.
 * Keeps a dropped entry rather than removing it: it only leaves the default view.
   That is on purpose — "8 of 87 from this feed were worth reading" needs the 87.
   Removing an entry is what the delete button is for.
+* Adds up those ratings per feed on the **Feed figures** page, linked from the
+  history page's toolbar: how often you opened something from a feed, how many of
+  those you called good, dropped or have not judged yet, and what share of the
+  judged ones were worth it. That is the question the rating buttons exist for —
+  which feeds earn their place, and which ones you keep opening and regretting.
+  A feed nobody has rated yet shows a dash rather than 0%: not judged is not the
+  same as not worth it.
 * Downloads the whole history as **JSON** or **CSV** — everything, not just the
   page on screen. Timestamps are written twice, as a Unix value for whatever
   reads the file and as ISO-8601 for whoever opens it.
