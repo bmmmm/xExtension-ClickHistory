@@ -67,10 +67,3 @@
 .click-history-none {
 	opacity: 0.6;
 }
-
-/* The toolbar button the script inserts into core's nav bar. Sized to match the
-   icons core puts there rather than the text buttons. */
-.click-history-nav .btn {
-	display: inline-flex;
-	align-items: center;
-}

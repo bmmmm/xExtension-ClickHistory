@@ -130,11 +130,9 @@ final class ClickHistoryExtension extends Minz_Extension {
 	public function jsVars(array $vars): array {
 		$vars['click_history'] = [
 			'track_clicks' => $this->settings()['track_clicks'],
-			// getFileUrl()-style HTML escaping is wrong here: these end up in JSON
-			// and are used verbatim by fetch() and by the button the script builds.
+			// getFileUrl()-style HTML escaping is wrong here: this ends up in JSON
+			// and is used verbatim by fetch().
 			'record_url' => html_entity_decode(_url('clickhistory', 'record'), ENT_QUOTES),
-			'index_url' => html_entity_decode(_url('clickhistory', 'index'), ENT_QUOTES),
-			'label' => _t('ext.click_history.menu'),
 		];
 		return $vars;
 	}

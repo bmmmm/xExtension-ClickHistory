@@ -36,11 +36,11 @@
 	</div>
 
 	<?php
-		// Kept last, where core keeps it — the click listener's toolbar button looks
-		// for `#actualize` to insert itself before. Unlike in the stream this
-		// navigates away rather than refreshing in place: init_actualize(), which
-		// turns the link into an AJAX call with a progress notification, is reached
-		// from init_normal() and so only runs in the stream views (p/scripts/main.js).
+		// Kept last, where core keeps it, so the bar reads the same here as in the
+		// stream. Unlike in the stream this navigates away rather than refreshing in
+		// place: init_actualize(), which turns the link into an AJAX call with a
+		// progress notification, is reached from init_normal() and so only runs in
+		// the stream views (p/scripts/main.js).
 	?>
 	<div id="nav_menu_actualize" class="group">
 		<a id="actualize" class="btn" href="<?= _url('feed', 'actualize') ?>" title="<?= _t('gen.action.actualize') ?>"><?= _i('refresh') ?></a>

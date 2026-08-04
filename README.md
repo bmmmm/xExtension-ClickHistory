@@ -20,8 +20,8 @@ This extension records that one gesture and nothing else.
   headline of an expanded article, and the link icon in the footer — plus
   middle-clicks and the core's <kbd>go to website</kbd> shortcut.
 * Shows the collection under **Click history**: headline, feed, category, when
-  it was last opened, one page at a time. Reachable from the clock icon in the
-  toolbar and from the header menu.
+  it was last opened, one page at a time. Reachable from the **Click history**
+  entry in the header menu, next to *Logs* and *About*.
 * Groups by category on request, or stays in plain chronological order.
 * Lets you say afterwards whether an article was worth it: **Good**, **Dropped**,
   or left **Unrated**. Filter links across the top switch between those states
@@ -143,12 +143,15 @@ A feed decides what an article's link is, so that link is untrusted input.
 
 ## One dependency on core's markup
 
-The clock button in the toolbar is inserted by the extension's own script,
-because no hook covers that row — `NavEntries` renders by the paging arrows at
-the bottom of the stream, `MenuOtherEntry` only inside the header dropdown. If a
-future FreshRSS release renames `.nav_menu` or `.group`, that button quietly
-stops appearing. Nothing else breaks: the menu entry needs no markup of core's,
-so the page stays reachable through it.
+Detecting a click means recognising the article's own link, and there is no hook
+for that: the script matches the three CSS selectors core uses for it
+(`a.go_website`, the link icon in the footer row, and the headline of a collapsed
+list row). If a future FreshRSS release renames one of them, clicks through that
+particular element stop being recorded — silently, since nothing else about the
+extension depends on it.
+
+The page itself needs no markup of core's: it is reached through the
+`MenuOtherEntry` hook, which is a supported extension point.
 
 ## Development
 
