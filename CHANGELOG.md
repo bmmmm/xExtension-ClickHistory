@@ -11,7 +11,7 @@ Entries for 0.3.0 and 0.3.1 were written afterwards, from the git history: this
 file was added later than the releases it describes. Versions 0.1.0 and 0.2.0
 existed in `metadata.json` during development but were never tagged or released.
 
-## [Unreleased]
+## [0.6.0] - 2026-08-04
 
 ### Added
 
@@ -123,7 +123,7 @@ existed in `metadata.json` during development but were never tagged or released.
 - A confirmation wording the core can never show was dropped rather than left in
   place looking as if it worked.
 
-[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.1...HEAD
+[0.6.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.3.1...v0.4.0
