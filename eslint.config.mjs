@@ -1,6 +1,8 @@
 // Mirrors FreshRSS core's own eslint.config.js (github.com/FreshRSS/FreshRSS) so
 // the extension is held to the same bar as the code it plugs into. Kept in sync
 // by hand; core has no published eslint-config package to depend on instead.
+// Rules block last reconciled against core commit b6f7c31 (2024-08-04, "Migrate
+// to ESLint 9", FreshRSS/FreshRSS#6685) — still current as of this note.
 import globals from 'globals';
 import js from '@eslint/js';
 import neostandard, { resolveIgnoresFromGitignore } from 'neostandard';
