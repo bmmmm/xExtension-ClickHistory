@@ -8,7 +8,7 @@
 		"node": ">=24"
 	},
 	"scripts": {
-		"preinstall": "node -e \"if (!(process.env.npm_config_user_agent || '').startsWith('pnpm')) { console.error('Use pnpm: https://pnpm.io/installation'); process.exit(1); }\"",
+		"preinstall": "node -e \"const ua=process.env.npm_config_user_agent||'';if(!ua.startsWith('pnpm/')){console.error('\\n  xExtension-ClickHistory is pnpm-only (supply-chain policy). Use: pnpm install - npm/yarn are blocked.\\n');process.exit(1)}\"",
 		"eslint": "eslint ."
 	},
 	"devDependencies": {
