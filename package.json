@@ -14,7 +14,7 @@
 	"devDependencies": {
 		"@eslint/js": "^9.39.5",
 		"eslint": "^9.39.5",
-		"globals": "^17.9.0",
+		"globals": "^17.11.0",
 		"linkedom": "^0.18.13",
 		"neostandard": "^0.13.0"
 	}
