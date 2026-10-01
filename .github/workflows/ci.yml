@@ -11,9 +11,11 @@ on:
 permissions:
   contents: read
 
-# FreshRSS core, checked out by both jobs: the oldest release this extension
+# FreshRSS core, checked out by every job: the oldest release this extension
 # supports, so using anything newer than it fails the build rather than a
-# stranger's install. scripts/deps-check.sh clones the same ref.
+# stranger's install. Two more places name it and have to move with it:
+# scripts/deps-check.sh, which clones it, and the hint tests/dao.php prints
+# when the checkout is missing.
 env:
   FRESHRSS_CORE_REF: '1.29.0'
 
@@ -38,6 +40,7 @@ jobs:
       # linting third-party PHP the day a step is reordered, and reports on code
       # this repository does not own.
       - name: Check PHP syntax
+        if: ${{ !cancelled() }}
         run: |
           php -v
           find . \( -path ./vendor -o -path ./node_modules -o -path ./.freshrss-core \) -prune -o \
@@ -49,6 +52,7 @@ jobs:
       # database does with those statements. The MySQL and PostgreSQL variants of
       # the same statements run in the `schema` job below.
       - name: Check the schema upgrade and the upsert
+        if: ${{ !cancelled() }}
         run: php tests/schema.php
 
       # The CSV and JSON export, read back the way a spreadsheet and a JSON parser
@@ -62,6 +66,7 @@ jobs:
       # source that travels inside the shipped directory. Checked like the rest, so
       # dropping it takes a deliberate edit here.
       - name: Check metadata.json is valid JSON
+        if: ${{ !cancelled() }}
         run: |
           python3 -c "import json,sys; d=json.load(open('metadata.json')); \
             [sys.exit('missing key: ' + k) for k in ('name','entrypoint','type','version','url') if k not in d]"
@@ -71,7 +76,7 @@ jobs:
       # update is available, so a tag that says one thing while the file says
       # another leaves every installation believing it is up to date.
       - name: Check the tag matches the version in metadata.json
-        if: startsWith(github.ref, 'refs/tags/')
+        if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/') }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
           version=$(python3 -c "import json; print(json.load(open('metadata.json'))['version'])")
@@ -80,6 +85,7 @@ jobs:
             || { echo "tag ${tag} does not match metadata.json version ${version} (expected v${version})"; exit 1; }
 
       - name: Check the entrypoint matches the class name
+        if: ${{ !cancelled() }}
         run: |
           entry=$(python3 -c "import json; print(json.load(open('metadata.json'))['entrypoint'])")
           grep -q "class ${entry}Extension" extension.php \
@@ -90,6 +96,7 @@ jobs:
       # the dispatcher: Minz_Dispatcher includes Controllers/xController.php and
       # instantiates FreshExtension_x_Controller (lib/Minz/Dispatcher.php).
       - name: Check the controller file and class match registerController()
+        if: ${{ !cancelled() }}
         run: |
           base=$(sed -n "s/.*registerController('\([a-zA-Z0-9]*\)').*/\1/p" extension.php)
           test -n "$base" || { echo 'no registerController() call found in extension.php'; exit 1; }
@@ -104,6 +111,7 @@ jobs:
             || { echo "controller base name '$base' is not alphanumeric"; exit 1; }
 
       - name: Check JavaScript syntax
+        if: ${{ !cancelled() }}
         run: |
           node --version
           find static -name '*.js' -print0 | xargs -0 -n1 node --check
@@ -117,14 +125,16 @@ jobs:
       # which is the point of the ordering: a toolchain the steps below pull over
       # the network cannot take them down with it.
       #
-      # `!cancelled()` from here on for the same reason, one layer further in:
-      # the two toolchains are unrelated, so one being unavailable must not hide
-      # what the other would have said. It took a broken pnpm release to notice
-      # that a failed `Install pnpm` was silently skipping PHPCS and PHPStan
-      # — the job went red for a reason that had nothing to do with the PHP it
-      # never got round to analysing. A real failure still fails the job; this
-      # only stops one from masking the rest.
+      # `!cancelled()` on every step after the setup, for the same reason one
+      # layer further in: the checks are independent, so one failing must not
+      # hide what the others would have said. It took a broken pnpm release to
+      # notice that a failed `Install pnpm` was silently skipping PHPCS and
+      # PHPStan, and a failing runner-only test used to skip `Install pnpm` in
+      # turn — three JS steps then failed with "command not found", and on a tag
+      # the version check above never ran. A real failure still fails the job;
+      # this only stops one from masking the rest.
       - name: Install pnpm
+        if: ${{ !cancelled() }}
         uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
@@ -143,28 +153,9 @@ jobs:
       # linkedom.
       - name: Run the click-detection and selector tests
         if: ${{ !cancelled() }}
-        run: |
-          set -o pipefail   # otherwise the pipe below reports tee's exit code
-          # Pin the reporter: the default differs between Node versions and the
-          # guard below parses its output. The whole directory, not one file by
-          # name, so a test added tomorrow cannot be silently skipped. The glob
-          # rather than `tests/`: newer Node reads a bare directory as a module
-          # path and reports zero tests.
-          node --test --test-reporter=tap tests/*.test.js | tee test.log
-          # `node --test` exits 0 on a run where everything was skipped, and on a
-          # run that found no files at all, so the counts are read back.
-          #
-          # Deliberately not compared against `grep -c '^test('`: that number is a
-          # property of how the tests are written, not of what ran. A `test()` call
-          # inside a loop or a helper, or one wrapped in a describe(), makes the two
-          # disagree while everything is passing — a guard that goes off when the
-          # tests are fine gets deleted, and then nothing checks the real failure
-          # mode. "Nothing was skipped and something ran" is that failure mode.
-          passed=$(sed -n 's/^# pass \([0-9]*\)$/\1/p' test.log)
-          skipped=$(sed -n 's/^# skipped \([0-9]*\)$/\1/p' test.log)
-          echo "passed=${passed:-0} skipped=${skipped:-0}"
-          test "${skipped:-0}" -eq 0 || { echo 'a test was skipped'; exit 1; }
-          test "${passed:-0}" -gt 0 || { echo 'no test ran at all'; exit 1; }
+        # scripts/js-tests.sh, with the guard against a run that skipped
+        # everything or found nothing — the same one deps:check goes through.
+        run: pnpm test
 
       - name: Check JavaScript style (ESLint)
         if: ${{ !cancelled() }}
@@ -231,7 +222,28 @@ jobs:
           php-version: '8.4'
           coverage: none
 
+      # The tests below execute the DAO, the schema and the export template only.
+      # A deprecation PHP raises while compiling — an implicitly nullable
+      # parameter is one from 8.4 on — can sit in any file, so every file is
+      # compiled here, the tests included (their own bootstrap only starts
+      # reporting once they are compiled). `php -l` prints such a deprecation and
+      # still exits 0, hence the grep over its output.
+      - name: Check PHP syntax and compile-time deprecations
+        run: |
+          php -v
+          status=0
+          out=$(find . \( -path ./vendor -o -path ./node_modules -o -path ./.freshrss-core \) -prune -o \
+            \( -name '*.php' -o -name '*.phtml' \) -print0 \
+            | xargs -0 -n1 php -d error_reporting=-1 -d display_errors=1 -l 2>&1) || status=$?
+          printf '%s\n' "$out"
+          test "$status" -eq 0 || exit "$status"
+          if printf '%s\n' "$out" | grep -E '^(PHP )?(Deprecated|Warning|Notice):'; then
+            echo 'PHP reported the lines above while compiling'
+            exit 1
+          fi
+
       - name: Git checkout FreshRSS core
+        if: ${{ !cancelled() }}
         uses: actions/checkout@v7
         with:
           repository: FreshRSS/FreshRSS
@@ -240,9 +252,8 @@ jobs:
           persist-credentials: false
 
       - name: Check the schema upgrade and the upsert
-        run: |
-          php -v
-          php tests/schema.php
+        if: ${{ !cancelled() }}
+        run: php tests/schema.php
 
       - name: Check the DAO through core's connection classes
         if: ${{ !cancelled() }}

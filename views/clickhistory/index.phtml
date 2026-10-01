@@ -168,7 +168,7 @@
 								<input type="hidden" name="id" value="<?= htmlspecialchars($item['id_entry'], ENT_COMPAT, 'UTF-8') ?>" />
 								<?php
 									// The filter and the grouping, but not the page: see
-									// backToIndex() in the controller.
+									// deleteAction() in the controller.
 									foreach ($viewParams as $name => $value) {
 										echo '<input type="hidden" name="', $name, '" value="',
 											htmlspecialchars($value, ENT_COMPAT, 'UTF-8'), '" />';
