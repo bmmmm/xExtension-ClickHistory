@@ -11,10 +11,7 @@
 	// The grouping and the filter travel with the page number, or paging would
 	// silently drop back to the chronological order — or to the whole archive —
 	// halfway through.
-	$carried = array_filter([
-		'group' => $this->byCategory ? 'category' : null,
-		'status' => $this->status,
-	], static fn(?string $value): bool => $value !== null);
+	$carried = $this->carriedParams();
 	$pageUrl = static fn(int $page): string => Minz_Url::display([
 		'c' => 'clickhistory',
 		'a' => 'index',

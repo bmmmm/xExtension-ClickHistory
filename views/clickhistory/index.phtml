@@ -1,13 +1,8 @@
 <?php
 	declare(strict_types=1);
 	/** @var ClickHistoryView $this */
-	// Every link on this page keeps the grouping and the filter the user is under:
-	// dropping either halfway through would silently change what they are looking
-	// at. array_filter removes whichever of the two is not set.
-	$viewParams = array_filter([
-		'group' => $this->byCategory ? 'category' : null,
-		'status' => $this->status,
-	], static fn(?string $value): bool => $value !== null);
+	// Every link on this page keeps the grouping and the filter the user is under.
+	$viewParams = $this->carriedParams();
 	$statusParams = $this->status === null ? [] : ['status' => $this->status];
 	$statusLabels = ClickHistoryExtension::statusLabels();
 	$rateTitles = ClickHistoryExtension::rateTitles();

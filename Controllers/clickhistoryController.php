@@ -41,6 +41,20 @@ final class ClickHistoryView extends FreshRSS_View {
 	public string $exportFormat = 'json';
 	/** @var array<string,mixed> */
 	public array $result = [];
+
+	/**
+	 * The grouping and the filter the page is under, for every link and form on it
+	 * that has to keep them: dropping either halfway through would silently change
+	 * what the user is looking at. Whichever of the two is not set is left out.
+	 *
+	 * @return array<string,string>
+	 */
+	public function carriedParams(): array {
+		return array_filter([
+			'group' => $this->byCategory ? 'category' : null,
+			'status' => $this->status,
+		], static fn(?string $value): bool => $value !== null);
+	}
 }
 
 /**
@@ -128,16 +142,15 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		$saved = !ctype_digit($id) || !in_array($rate, ClickHistoryDAO::STATUSES, true) ||
 			(new ClickHistoryDAO())->setStatus($id, $rate);
 
-		$filter = self::requestedStatus();
-		$params = array_filter([
-			'status' => $filter,
-			'group' => Minz_Request::paramString('group') === 'category' ? 'category' : null,
-			// Back to the page the judgement was made on, unlike after a deletion.
-			// With a filter active that does not hold: the row has just left the
-			// list and everything behind it moved up, so the old page number points
-			// at something else and the first page is the only honest answer.
-			'page' => $filter === null ? (Minz_Request::paramInt('page') ?: null) : null,
-		], static fn(string|int|null $value): bool => $value !== null);
+		$params = self::carriedParams();
+		// Back to the page the judgement was made on, unlike after a deletion. With
+		// a filter active that does not hold: the row has just left the list and
+		// everything behind it moved up, so the old page number points at something
+		// else and the first page is the only honest answer.
+		$page = Minz_Request::paramInt('page');
+		if (!isset($params['status']) && $page !== 0) {
+			$params['page'] = $page;
+		}
 		$this->backToIndex($params, $saved);
 	}
 
@@ -286,9 +299,9 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 	}
 
 	/**
-	 * The filter and the grouping the form was sent from. The list the user comes
-	 * back to has to be the one they left: dropping either would silently change
-	 * what they are looking at.
+	 * The filter and the grouping the form was sent from, read back from the
+	 * request: ClickHistoryView::carriedParams() put them into it. The list the
+	 * user comes back to has to be the one they left.
 	 *
 	 * @return array<string,string>
 	 */
