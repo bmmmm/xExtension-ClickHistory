@@ -49,6 +49,10 @@ return array(
 			'export_json' => 'Download as JSON',
 			'export_csv' => 'Download as CSV',
 		),
+		'feedback' => array(
+			'not_saved' => 'The change could not be saved. The details are in the FreshRSS logs.',
+			'cleared' => 'The whole history has been deleted.',
+		),
 		'conf' => array(
 			'where_help' => 'The history is a page of its own, in the header menu (top right, gear icon) next to “Logs” and “About” — or open it directly:',
 			'track_clicks' => 'Record opened articles',

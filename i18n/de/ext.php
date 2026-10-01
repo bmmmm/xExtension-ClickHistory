@@ -49,6 +49,10 @@ return array(
 			'export_json' => 'Als JSON herunterladen',
 			'export_csv' => 'Als CSV herunterladen',
 		),
+		'feedback' => array(
+			'not_saved' => 'Die Änderung konnte nicht gespeichert werden. Details stehen in den Protokollen von FreshRSS.',
+			'cleared' => 'Der gesamte Verlauf wurde gelöscht.',
+		),
 		'conf' => array(
 			'where_help' => 'Der Verlauf ist eine eigene Seite und über das Kopfmenü (oben rechts, Zahnrad) erreichbar — oder direkt öffnen:',
 			'track_clicks' => 'Geöffnete Artikel aufzeichnen',

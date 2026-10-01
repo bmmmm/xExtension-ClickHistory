@@ -125,9 +125,8 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		// under, so that both can travel in the same form.
 		$id = Minz_Request::paramString('id');
 		$rate = Minz_Request::paramString('rate');
-		if (ctype_digit($id) && in_array($rate, ClickHistoryDAO::STATUSES, true)) {
+		$saved = !ctype_digit($id) || !in_array($rate, ClickHistoryDAO::STATUSES, true) ||
 			(new ClickHistoryDAO())->setStatus($id, $rate);
-		}
 
 		$filter = self::requestedStatus();
 		$params = array_filter([
@@ -139,7 +138,7 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			// at something else and the first page is the only honest answer.
 			'page' => $filter === null ? (Minz_Request::paramInt('page') ?: null) : null,
 		], static fn(string|int|null $value): bool => $value !== null);
-		Minz_Request::forward(['c' => 'clickhistory', 'a' => 'index', 'params' => $params], true);
+		$this->backToIndex($params, $saved);
 	}
 
 	/**
@@ -237,10 +236,11 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			return;
 		}
 		$id = Minz_Request::paramString('id');
-		if (ctype_digit($id)) {
-			(new ClickHistoryDAO())->delete($id);
-		}
-		$this->backToIndex(self::carriedParams());
+		$saved = !ctype_digit($id) || (new ClickHistoryDAO())->delete($id);
+		// Back to the first page rather than to the page the deletion happened on:
+		// removing an entry shifts every later one forward, so the page number the
+		// form came from no longer points at what the user was looking at.
+		$this->backToIndex(self::carriedParams(), $saved);
 	}
 
 	public function clearAction(): void {
@@ -248,8 +248,11 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			Minz_Error::error(405);
 			return;
 		}
-		(new ClickHistoryDAO())->clear();
-		$this->backToIndex();
+		$saved = (new ClickHistoryDAO())->clear();
+		// The one action that says so when it worked: the page it leads back to is
+		// empty either way, and an empty page alone does not tell a cleared history
+		// from one that failed to load.
+		$this->backToIndex([], $saved, _t('ext.click_history.feedback.cleared'));
 	}
 
 	/**
@@ -263,14 +266,23 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 	}
 
 	/**
-	 * Back to the first page rather than to the page the deletion happened on:
-	 * removing an entry shifts every later one forward, so the page number the
-	 * form came from no longer points at what the user was looking at.
+	 * Back to the list after a change. A change the database refused is said out
+	 * loud, as core's notification: the list alone would look exactly as if it had
+	 * worked, or as if the button had done nothing. The reason is in the log,
+	 * where the DAO put it.
 	 *
-	 * @param array<string,string> $params
+	 * @param array<string,string|int> $params
+	 * @param string|null $done the notification for a change that worked, if any
 	 */
-	private function backToIndex(array $params = []): void {
-		Minz_Request::forward(['c' => 'clickhistory', 'a' => 'index', 'params' => $params], true);
+	private function backToIndex(array $params, bool $saved, ?string $done = null): void {
+		$url = ['c' => 'clickhistory', 'a' => 'index', 'params' => $params];
+		if (!$saved) {
+			Minz_Request::bad(_t('ext.click_history.feedback.not_saved'), $url);
+		} elseif ($done !== null) {
+			Minz_Request::good($done, $url);
+		} else {
+			Minz_Request::forward($url, true);
+		}
 	}
 
 	/**

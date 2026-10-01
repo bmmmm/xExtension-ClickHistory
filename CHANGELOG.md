@@ -13,13 +13,11 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- The CSV export follows RFC 4180: a headline containing `\"` used to break
-  its cell for every reader that does, and from PHP 8.4 on each exported row
-  also raised a deprecation warning.
-- Deleting an entry keeps the status filter and the grouping by category;
-  it used to drop back to the unfiltered list by date.
+- A notification when a rating, a deletion or clearing the history could not
+  be saved, and one when the whole history has been deleted. A failed change
+  used to look exactly like a successful one.
 
 ### Changed
 
@@ -27,6 +25,14 @@ existed in `metadata.json` during development but were never tagged or released.
   instead of the deprecated `AGPL-3.0`, and the README's install step points at
   the latest release rather than the repository — both matching the sibling
   Share via QR Code repo, where these were fixed earlier.
+
+### Fixed
+
+- The CSV export follows RFC 4180: a headline containing `\"` used to break
+  its cell for every reader that does, and from PHP 8.4 on each exported row
+  also raised a deprecation warning.
+- Deleting an entry keeps the status filter and the grouping by category;
+  it used to drop back to the unfiltered list by date.
 
 ## [0.6.0] - 2026-08-04
 
