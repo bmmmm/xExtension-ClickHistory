@@ -329,7 +329,7 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		// null branch is unreachable in practice; the defaults keep the page
 		// working rather than fataling if that ever stops being true.
 		return $extension === null
-			? ['track_clicks' => true, 'page_size' => 50]
+			? ClickHistoryExtension::DEFAULTS
 			: $extension->settings();
 	}
 }

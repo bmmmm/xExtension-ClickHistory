@@ -4,7 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/Dao/ClickHistoryDAO.php';
 
 final class ClickHistoryExtension extends Minz_Extension {
-	private const DEFAULTS = [
+	/** Also what the controller falls back to while no instance is registered. */
+	public const DEFAULTS = [
 		'track_clicks' => true,
 		'page_size' => 50,
 	];
