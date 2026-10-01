@@ -76,13 +76,14 @@ Requires **FreshRSS 1.29.0 or newer**. CI analyses the extension against exactly
 that release, so this is a checked property rather than a claim.
 
 1. Download the [latest release](https://github.com/bmmmm/xExtension-ClickHistory/releases/latest)
-   and unpack it into the `extensions/` directory of your FreshRSS installation.
-   The archive unpacks to `xExtension-ClickHistory-<version>`: rename that to
-   `xExtension-ClickHistory`. When updating, replace the old directory rather
-   than putting the new one next to it — FreshRSS loads extensions by name, and
-   of two copies it would pick one by directory order, not by version. The
-   default branch is where work in progress lands, so a release is the version
-   that was actually checked.
+   and unpack it outside your FreshRSS installation. It unpacks to
+   `xExtension-ClickHistory-<version>`: rename that to `xExtension-ClickHistory`
+   and move it into the `extensions/` directory. When updating, replace the old
+   directory rather than putting the new one next to it — FreshRSS loads every
+   directory in `extensions/`, and two copies of this one declare the same
+   classes twice, which stops every page with a fatal error. The default branch
+   is where work in progress lands, so a release is the version that was
+   actually checked.
 2. Enable **Click History** under *Configuration → Extensions*.
 
 Enabling it creates one table (`click_history`, with your installation's usual
