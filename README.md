@@ -203,6 +203,9 @@ php tests/dao.php
 # The CSV and JSON export, rendered and read back. Needs nothing but PHP.
 php tests/export.php
 
+# Every language defines exactly the translation keys the code uses.
+php tests/i18n.php
+
 # JavaScript style (ESLint, aligned with FreshRSS core's own eslint.config.js)
 pnpm install
 pnpm run eslint

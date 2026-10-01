@@ -108,44 +108,10 @@ jobs:
           node --version
           find static -name '*.js' -print0 | xargs -0 -n1 node --check
 
-      # A missing key does not fail loudly at runtime — FreshRSS renders the key
-      # itself, so an untranslated page looks like a typo rather than a bug.
-      - name: Check every translation key used by the extension exists
-        run: |
-          php -r '
-            $source = "";
-            foreach (["extension.php", "configure.phtml"] as $file) {
-              $source .= file_get_contents($file);
-            }
-            // Both depths: views/<controller>/<action>.phtml and the helpers,
-            // which sit one level deeper under views/helpers/<controller>/.
-            foreach (array_merge(glob("Controllers/*.php"), glob("views/*/*.phtml"), glob("views/*/*/*.phtml")) as $file) {
-              $source .= file_get_contents($file);
-            }
-            preg_match_all("/_t\(.ext\.click_history\.([a-z_.]+)./", $source, $m);
-            $keys = array_values(array_unique($m[1]));
-            if (count($keys) < 10) {
-              fwrite(STDERR, "only " . count($keys) . " keys found - did the pattern stop matching?\n");
-              exit(1);
-            }
-            echo count($keys), " keys used\n";
-            foreach (glob("i18n/*/ext.php") as $file) {
-              $flat = [];
-              $walk = function (array $node, string $prefix) use (&$walk, &$flat): void {
-                foreach ($node as $key => $value) {
-                  is_array($value) ? $walk($value, "$prefix$key.") : $flat[] = "$prefix$key";
-                }
-              };
-              $walk(require $file, "");
-              foreach ($keys as $key) {
-                if (!in_array("click_history.$key", $flat, true)) {
-                  fwrite(STDERR, "$file is missing click_history.$key\n");
-                  exit(1);
-                }
-              }
-              echo "$file ok\n";
-            }
-          '
+      # Every language defines exactly the keys the code uses — see the file.
+      - name: Check the translations match the keys the extension uses
+        if: ${{ !cancelled() }}
+        run: php tests/i18n.php
 
       # Everything above needs nothing but the runner — including the PHP checks,
       # which is the point of the ordering: a toolchain the steps below pull over
