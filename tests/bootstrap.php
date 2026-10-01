@@ -10,6 +10,11 @@ declare(strict_types=1);
 // FreshRSS core, loaded from .freshrss-core by tests/dao.php, is left to PHP's
 // own handler: what a PHP release thinks of core is not this extension's finding.
 
+// Everything, whatever php.ini says: the production template that setup-php
+// installs in CI masks out E_DEPRECATED, which would hide exactly what the
+// handler below is for.
+error_reporting(E_ALL);
+
 set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
 	$root = dirname(__DIR__) . DIRECTORY_SEPARATOR;
 	$ours = str_starts_with($file, $root) && !str_starts_with($file, $root . '.freshrss-core' . DIRECTORY_SEPARATOR);
