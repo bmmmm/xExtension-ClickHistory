@@ -121,16 +121,18 @@ there would mean one accidental click destroys the whole archive. Use the
 | Backend | Status |
 |---|---|
 | SQLite | Verified end to end |
-| MySQL / MariaDB | Schema and upsert executed in CI against `mysql:8`; not run inside a FreshRSS installation |
-| PostgreSQL | Schema and upsert executed in CI against `postgres:16`; not run inside a FreshRSS installation |
+| MySQL / MariaDB | Schema, upsert and DAO executed in CI against `mysql:8`; not run inside a FreshRSS installation |
+| PostgreSQL | Schema, upsert and DAO executed in CI against `postgres:16`; not run inside a FreshRSS installation |
 
 CI runs `tests/schema.php` against all three: it executes the extension's real
 CREATE TABLE, ALTER TABLE and upsert statements — the same strings the running
 code uses, not a copy — so a statement only one backend accepts fails the build
-instead of a stranger's install. What is still SQLite-only is the layer above:
-the development installation is SQLite, so the DAO, the page and the export have
-only been exercised there. If you hit a problem on MySQL or PostgreSQL, that is
-where to look first.
+instead of a stranger's install. `tests/dao.php` runs the DAO on top of them,
+through core's own connection classes with the settings FreshRSS gives them
+(unbuffered queries on MySQL, native prepares everywhere), in the order the
+pages call it. What is still SQLite-only is the layer above: the development
+installation is SQLite, so the page and the export have only been rendered
+there. If you hit a problem on MySQL or PostgreSQL, that is where to look first.
 
 ## Security
 
