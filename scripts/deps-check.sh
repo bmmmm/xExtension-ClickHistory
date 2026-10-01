@@ -4,7 +4,7 @@
 # bump installs only one; the same linters as the lint job of
 # .github/workflows/ci.yml, against FreshRSS core at the ref CI pins.
 set -eu
-# The ref is FRESHRSS_CORE_REF in ci.yml; keep the two in step.
+# The ref is FRESHRSS_CORE_REF in ci.yml; keep it in step (see the comment there).
 [ -d .freshrss-core ] || git clone -q --depth 1 --branch 1.29.0 https://github.com/FreshRSS/FreshRSS .freshrss-core
 pnpm install --frozen-lockfile --silent
 composer install --no-interaction --quiet
@@ -13,5 +13,6 @@ vendor/bin/phpcs .
 vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 pnpm run eslint
 # The JS tests too: linkedom is a devDependency only they use, so a bump of it
-# would otherwise pass this gate without a single line of it having run.
+# would otherwise pass this gate without a single line of it having run. With
+# the same skipped/empty guard as CI (scripts/js-tests.sh).
 pnpm test
