@@ -51,6 +51,12 @@ jobs:
       - name: Check the schema upgrade and the upsert
         run: php tests/schema.php
 
+      # The CSV and JSON export, read back the way a spreadsheet and a JSON parser
+      # read them. Needs nothing but PHP either.
+      - name: Check the export files
+        if: ${{ !cancelled() }}
+        run: php tests/export.php
+
       # `url` is the field FreshRSS' community extension list links its name to
       # (app/views/extension/index.phtml), and it is the only pointer back to the
       # source that travels inside the shipped directory. Checked like the rest, so

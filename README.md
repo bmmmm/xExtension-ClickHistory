@@ -196,6 +196,9 @@ php tests/schema.php
 # .freshrss-core checkout from the PHPStan step below.
 php tests/dao.php
 
+# The CSV and JSON export, rendered and read back. Needs nothing but PHP.
+php tests/export.php
+
 # JavaScript style (ESLint, aligned with FreshRSS core's own eslint.config.js)
 pnpm install
 pnpm run eslint

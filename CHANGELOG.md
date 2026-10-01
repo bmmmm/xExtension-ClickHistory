@@ -13,6 +13,12 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+### Fixed
+
+- The CSV export follows RFC 4180: a headline containing `\"` used to break
+  its cell for every reader that does, and from PHP 8.4 on each exported row
+  also raised a deprecation warning.
+
 ### Changed
 
 - The SPDX licence id in `composer.json` and `package.json` is `AGPL-3.0-only`
