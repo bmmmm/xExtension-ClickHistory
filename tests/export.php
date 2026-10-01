@@ -11,6 +11,8 @@ declare(strict_types=1);
 //
 //   php tests/export.php
 
+require_once __DIR__ . '/bootstrap.php';
+
 /**
  * Stands in for ClickHistoryView: the two properties the template reads, filled
  * the way the controller fills them.

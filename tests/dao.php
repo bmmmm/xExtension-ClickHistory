@@ -16,6 +16,8 @@ declare(strict_types=1);
 //
 // Needs FreshRSS core in .freshrss-core, the same checkout PHPStan uses.
 
+require_once __DIR__ . '/bootstrap.php';
+
 $minz = __DIR__ . '/../.freshrss-core/lib/Minz';
 if (!is_file($minz . '/ModelPdo.php')) {
 	fwrite(STDERR, "FreshRSS core is missing: git clone --depth 1 --branch 1.29.0 https://github.com/FreshRSS/FreshRSS .freshrss-core\n");

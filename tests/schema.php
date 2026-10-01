@@ -28,6 +28,7 @@ declare(strict_types=1);
 // The error mode matches Minz_ModelPdo (ERRMODE_SILENT), which is what lets the
 // column probe work by reading a false return instead of catching an exception.
 
+require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../Dao/ClickHistorySchema.php';
 
 $dsn = getenv('CLICKHISTORY_TEST_DSN');

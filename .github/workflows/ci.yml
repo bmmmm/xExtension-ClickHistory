@@ -247,6 +247,45 @@ jobs:
         if: ${{ !cancelled() }}
         run: vendor/bin/phpstan analyse --no-progress
 
+  # The jobs around this one pin the lowest PHP the extension claims; phpstan.neon
+  # claims up to 8.4. The runtime tests run here on that ceiling, where
+  # tests/bootstrap.php turns a deprecation in this repository's code into a
+  # failure — the CSV export's fputcsv() call warned on every row under 8.4 while
+  # 8.1 stayed green. SQLite only: the dialects are the `schema` job's business.
+  ceiling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Git checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Git checkout FreshRSS core
+        uses: actions/checkout@v7
+        with:
+          repository: FreshRSS/FreshRSS
+          ref: ${{ env.FRESHRSS_CORE_REF }}
+          path: .freshrss-core
+          persist-credentials: false
+
+      - name: Check the schema upgrade and the upsert
+        run: |
+          php -v
+          php tests/schema.php
+
+      - name: Check the DAO through core's connection classes
+        if: ${{ !cancelled() }}
+        run: php tests/dao.php
+
+      - name: Check the export files
+        if: ${{ !cancelled() }}
+        run: php tests/export.php
+
   # The extension writes three dialects of the same schema and the development
   # installation only ever runs one of them. SQLite is covered in the job above,
   # where it costs nothing; these two need a server, so they get one. Without this
