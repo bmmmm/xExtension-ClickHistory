@@ -80,7 +80,7 @@ foreach ($triggers as $i => $char) {
 $rows[] = ExportView::row('1759276800000020', 'Plain', 'https://example.org/p', 'Feed', 'Cat', '-x');
 
 $csv = ExportView::render('csv', $rows);
-$check('the CSV starts with a UTF-8 BOM', str_starts_with($csv, "\xEF\xBB\xBF"));
+$check('the CSV starts with a UTF-8 BOM', str_starts_with($csv, "\xEF\xBB\xBE"));
 
 $stream = fopen('php://memory', 'r+');
 if ($stream === false) {

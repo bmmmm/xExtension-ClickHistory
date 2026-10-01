@@ -62,11 +62,11 @@ $password = $password === false ? null : $password;
 $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT];
 $dbType = strtolower(substr($dsn, 0, (int)strpos($dsn . ':', ':')));
 if ($dbType === 'mysql') {
-	$dsn .= ';charset=utf8mb4';
+	$dsn .= ';charset=utf8';
 	if (class_exists('Pdo\Mysql')) {
-		$options[Pdo\Mysql::ATTR_INIT_COMMAND] = 'SET NAMES utf8mb4';	// PHP 8.4+, as core does it
+		$options[Pdo\Mysql::ATTR_INIT_COMMAND] = 'SET NAMES utf8';	// PHP 8.4+, as core does it
 	} else {
-		$options[PDO::MYSQL_ATTR_INIT_COMMAND] = 'SET NAMES utf8mb4';	// PHP < 8.4
+		$options[PDO::MYSQL_ATTR_INIT_COMMAND] = 'SET NAMES utf8';	// PHP < 8.4
 	}
 }
 try {
