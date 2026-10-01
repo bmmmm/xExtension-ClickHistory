@@ -116,30 +116,20 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return false;
 		}
 
-		$stm = $this->pdo->prepare(ClickHistorySchema::record($this->pdo->dbType()));
-		if ($stm !== false &&
-			// A 64-bit id bound as an integer would overflow on 32-bit PHP, so it
-			// travels as a string all the way to the BIGINT column — the same way
-			// core treats FreshRSS_Entry::id().
-			$stm->bindValue(':id_entry', $idEntry, PDO::PARAM_STR) &&
-			$stm->bindValue(':url', $url, PDO::PARAM_STR) &&
-			$stm->bindValue(':title', $title, PDO::PARAM_STR) &&
-			$stm->bindValue(':feed_name', $feedName, PDO::PARAM_STR) &&
-			$stm->bindValue(':id_feed', $idFeed, $idFeed === null ? PDO::PARAM_NULL : PDO::PARAM_INT) &&
-			$stm->bindValue(':category_name', $categoryName, PDO::PARAM_STR) &&
-			$stm->bindValue(':id_category', $idCategory, $idCategory === null ? PDO::PARAM_NULL : PDO::PARAM_INT) &&
-			$stm->bindValue(':clicked_at', $timestamp, PDO::PARAM_INT) &&
-			$stm->bindValue(':first_clicked_at', $timestamp, PDO::PARAM_INT) &&
+		return $this->run(ClickHistorySchema::record($this->pdo->dbType()), [
+			':id_entry' => $idEntry,
+			':url' => $url,
+			':title' => $title,
+			':feed_name' => $feedName,
+			':id_feed' => $idFeed,
+			':category_name' => $categoryName,
+			':id_category' => $idCategory,
+			':clicked_at' => $timestamp,
+			':first_clicked_at' => $timestamp,
 			// Only ever used for a row that does not exist yet: the upsert leaves
 			// the status of an already-judged article alone.
-			$stm->bindValue(':status', self::STATUS_UNRATED, PDO::PARAM_STR) &&
-			$stm->execute()) {
-			return true;
-		}
-
-		$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
-		Minz_Log::error('ClickHistory: cannot record entry ' . $idEntry . ': ' . json_encode($info));
-		return false;
+			':status' => self::STATUS_UNRATED,
+		], 'record entry ' . $idEntry) !== null;
 	}
 
 	/**
@@ -165,18 +155,8 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			LIMIT :limit OFFSET :offset
 			SQL;
 
-		$stm = $this->pdo->prepare($sql);
-		if ($stm === false ||
-			($status !== null && !$stm->bindValue(':status', $status, PDO::PARAM_STR)) ||
-			!$stm->bindValue(':limit', $limit, PDO::PARAM_INT) ||
-			!$stm->bindValue(':offset', $offset, PDO::PARAM_INT) ||
-			!$stm->execute()) {
-			$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
-			Minz_Log::error('ClickHistory: cannot list entries: ' . json_encode($info));
-			return [];
-		}
-
-		return $this->normalise($stm);
+		$stm = $this->run($sql, self::statusParam($status) + [':limit' => $limit, ':offset' => $offset], 'list entries');
+		return $stm === null ? [] : $this->normalise($stm);
 	}
 
 	/**
@@ -207,12 +187,8 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			{$where}
 			{$order}
 			SQL;
-		$stm = $this->pdo->prepare($sql);
-		if ($stm === false ||
-			($status !== null && !$stm->bindValue(':status', $status, PDO::PARAM_STR)) ||
-			!$stm->execute()) {
-			$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
-			Minz_Log::error('ClickHistory: cannot export entries: ' . json_encode($info));
+		$stm = $this->run($sql, self::statusParam($status), 'export entries');
+		if ($stm === null) {
 			return;
 		}
 		while (true) {
@@ -235,16 +211,11 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		if (!$this->ensureTableExists()) {
 			return false;
 		}
-		$stm = $this->pdo->prepare('UPDATE `_click_history` SET status = :status WHERE id_entry = :id_entry');
-		if ($stm !== false &&
-			$stm->bindValue(':status', self::normaliseStatus($status), PDO::PARAM_STR) &&
-			$stm->bindValue(':id_entry', $idEntry, PDO::PARAM_STR) &&
-			$stm->execute()) {
-			return true;
-		}
-		$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
-		Minz_Log::error('ClickHistory: cannot set the status of entry ' . $idEntry . ': ' . json_encode($info));
-		return false;
+		return $this->run(
+			'UPDATE `_click_history` SET status = :status WHERE id_entry = :id_entry',
+			[':status' => self::normaliseStatus($status), ':id_entry' => $idEntry],
+			'set the status of entry ' . $idEntry,
+		) !== null;
 	}
 
 	/**
@@ -291,13 +262,12 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		if (!$this->ensureTableExists()) {
 			return [];
 		}
-		$stm = $this->pdo->prepare(ClickHistorySchema::statsByFeed());
-		if ($stm === false ||
-			!$stm->bindValue(':good', self::STATUS_GOOD, PDO::PARAM_STR) ||
-			!$stm->bindValue(':dropped', self::STATUS_DROPPED, PDO::PARAM_STR) ||
-			!$stm->execute()) {
-			$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
-			Minz_Log::error('ClickHistory: cannot count by feed: ' . json_encode($info));
+		$stm = $this->run(
+			ClickHistorySchema::statsByFeed(),
+			[':good' => self::STATUS_GOOD, ':dropped' => self::STATUS_DROPPED],
+			'count by feed',
+		);
+		if ($stm === null) {
 			return [];
 		}
 
@@ -376,12 +346,12 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		if (!$this->ensureTableExists()) {
 			return 0;
 		}
-		$stm = $this->pdo->prepare('SELECT COUNT(*) FROM `_click_history` ' . ClickHistorySchema::statusClause($status));
-		if ($stm === false ||
-			($status !== null && !$stm->bindValue(':status', $status, PDO::PARAM_STR)) ||
-			!$stm->execute()) {
-			$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
-			Minz_Log::error('ClickHistory: cannot count entries: ' . json_encode($info));
+		$stm = $this->run(
+			'SELECT COUNT(*) FROM `_click_history` ' . ClickHistorySchema::statusClause($status),
+			self::statusParam($status),
+			'count entries',
+		);
+		if ($stm === null) {
 			return 0;
 		}
 		$value = $stm->fetchColumn();
@@ -392,13 +362,11 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		if (!$this->ensureTableExists()) {
 			return false;
 		}
-		$stm = $this->pdo->prepare('DELETE FROM `_click_history` WHERE id_entry = :id_entry');
-		if ($stm !== false && $stm->bindValue(':id_entry', $idEntry, PDO::PARAM_STR) && $stm->execute()) {
-			return true;
-		}
-		$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
-		Minz_Log::error('ClickHistory: cannot delete entry ' . $idEntry . ': ' . json_encode($info));
-		return false;
+		return $this->run(
+			'DELETE FROM `_click_history` WHERE id_entry = :id_entry',
+			[':id_entry' => $idEntry],
+			'delete entry ' . $idEntry,
+		) !== null;
 	}
 
 	public function clear(): bool {
@@ -410,5 +378,45 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * Prepares, binds and executes one statement, and logs why if any of the three
+	 * fails. Each value is bound as what it is in PHP: null as NULL, an int as an
+	 * integer, a string as text. That is why entry ids are strings everywhere in
+	 * here: a 64-bit id bound as an integer would overflow on 32-bit PHP, so it
+	 * travels as a string all the way to the BIGINT column — the same way core
+	 * treats FreshRSS_Entry::id().
+	 *
+	 * @param array<string,string|int|null> $params placeholder => value
+	 * @param string $what what the statement was for, as the log should say it
+	 * @return PDOStatement|null the executed statement, null after an error
+	 */
+	private function run(string $sql, array $params, string $what): ?PDOStatement {
+		$stm = $this->pdo->prepare($sql);
+		$ok = $stm !== false;
+		foreach ($params as $name => $value) {
+			$type = $value === null ? PDO::PARAM_NULL : (is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+			if (!$ok || !$stm->bindValue($name, $value, $type)) {
+				$ok = false;
+				break;
+			}
+		}
+		if ($ok && $stm->execute()) {
+			return $stm;
+		}
+		$info = $stm === false ? $this->pdo->errorInfo() : $stm->errorInfo();
+		Minz_Log::error('ClickHistory: cannot ' . $what . ': ' . json_encode($info));
+		return null;
+	}
+
+	/**
+	 * The binding that goes with ClickHistorySchema::statusClause(): none at all
+	 * for every status, since the clause is empty then.
+	 *
+	 * @return array<string,string>
+	 */
+	private static function statusParam(?string $status): array {
+		return $status === null ? [] : [':status' => $status];
 	}
 }

@@ -176,10 +176,13 @@ $check('an unknown status is listed as unrated', ($all[1]['status'] ?? '') === C
 $paged = array_merge($ids($dao->listEntries(2, 0)), $ids($dao->listEntries(2, 2)));
 $check('two pages of two hold every entry exactly once', $paged === $ids($all));
 
-foreach ([null, ...ClickHistoryDAO::STATUSES] as $status) {
+// The filter matches the stored value, so the row whose status is unknown is in
+// none of the three.
+foreach (['all' => 4, ClickHistoryDAO::STATUS_UNRATED => 1, ClickHistoryDAO::STATUS_GOOD => 1, ClickHistoryDAO::STATUS_DROPPED => 1] as $status => $expected) {
+	$status = $status === 'all' ? null : $status;
 	$check(
 		'count(' . ($status ?? 'all') . ') matches the rows listed under it',
-		$dao->count($status) === count($dao->listEntries(100, 0, false, $status))
+		$dao->count($status) === $expected && count($dao->listEntries(100, 0, false, $status)) === $expected
 	);
 }
 
@@ -209,6 +212,13 @@ $check('setting a status this version does not know', $dao->setStatus($e3, 'late
 $check('… stores unrated instead', $stored('status', $e3) === ClickHistoryDAO::STATUS_UNRATED);
 $check('deleting an entry removes that one', $dao->delete($e2) && $ids($dao->listEntries(100, 0)) === [$e1, $e4, $e3]);
 $check('clearing empties the table', $dao->clear() && $dao->count() === 0);
+
+// A statement the database refuses has to come back as a failure: the history
+// page tells the user so, rather than redirecting as if it had worked. The table
+// goes away behind the DAO's back, after its once-per-process check has passed.
+$exec('DROP TABLE `_click_history`');
+$check('a refused write is reported as a failure', !$dao->setStatus($e1, ClickHistoryDAO::STATUS_GOOD) && !$dao->delete($e1));
+$check('a refused read comes back empty', $dao->listEntries(10, 0) === [] && $dao->count() === 0 && $dao->statsByFeed() === []);
 
 // --- The history page on a table nobody has touched yet ----------------------
 // What indexAction() does, in its order, as the first thing in a process: create
