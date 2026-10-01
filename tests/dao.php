@@ -121,7 +121,7 @@ $ids = static fn(array $rows): array => array_column($rows, 'id_entry');
 
 // MySQL and PostgreSQL keep their database between runs, so start from nothing
 // rather than from whatever the last run left behind.
-$prefixes = ['chtest_dao_a_', 'chtest_dao_b_', 'chtest_dao_legacy_', 'chtest_dao_fresh_'];
+$prefixes = ['chtest_dao_a_', 'chtest_dao_b_', 'chtest_dao_legacy_', 'chtest_dao_fresh_', 'chtest_dao_figures_'];
 $dropAll = static function () use ($pdo, $prefixes, $exec): void {
 	foreach ($prefixes as $prefix) {
 		$pdo->setPrefix($prefix);
@@ -194,11 +194,6 @@ $check('the filter counts fold an unknown status into unrated', $counts === [
 ]);
 $check('the filter counts add up to the total', array_sum($counts) === $dao->count());
 
-$check('the figures, one row per feed and category', $dao->statsByFeed() === [
-	['feed_name' => 'Feed', 'category_name' => 'Cat', 'id_feed' => 1, 'opened' => 3, 'good' => 1, 'dropped' => 1, 'unrated' => 1],
-	['feed_name' => 'Other feed', 'category_name' => '', 'id_feed' => 2, 'opened' => 1, 'good' => 0, 'dropped' => 0, 'unrated' => 1],
-]);
-
 // The export walks the whole result set one row at a time. On MySQL that result is
 // unbuffered, so the connection is only free again once it has been read to the end.
 $check('the export streams the same rows the list shows', $ids(iterator_to_array($dao->streamAll(), false)) === $ids($all));
@@ -219,6 +214,37 @@ $check('clearing empties the table', $dao->clear() && $dao->count() === 0);
 $exec('DROP TABLE `_click_history`');
 $check('a refused write is reported as a failure', !$dao->setStatus($e1, ClickHistoryDAO::STATUS_GOOD) && !$dao->delete($e1));
 $check('a refused read comes back empty', $dao->listEntries(10, 0) === [] && $dao->count() === 0 && $dao->statsByFeed() === []);
+
+// --- The per-feed figures ----------------------------------------------------
+// A second feed, so that the ordering has something to order; one of its rows
+// without an id_feed, so that MAX() has a NULL to ignore; the first feed clicked
+// again under a second category, which is what a feed that has been moved leaves
+// behind — the category is a copy taken at click time, so that feed is two rows;
+// and a status this version does not know, which has to land in unrated.
+
+$pdo->setPrefix($prefixes[4]);
+$dao->record($e1, 'https://example.org/1', 'One', 'Feed', 1, 'Cat', 10, 100);
+$dao->record($e2, 'https://example.org/2', 'Two', 'Feed', 1, 'Cat', 10, 200);
+$dao->record($e3, 'https://example.org/3', 'Three', 'Feed', 1, 'Cat', 10, 300);
+$dao->record($e4, 'https://example.org/4', 'Four', 'Other feed', 2, 'Cat', 10, 400);
+$dao->record('1759276800000005', 'https://example.org/5', 'Five', 'Other feed', null, 'Cat', 10, 500);
+$dao->record('1759276800000006', 'https://example.org/6', 'Six', 'Feed', 1, 'Moved', 20, 600);
+$dao->setStatus($e1, ClickHistoryDAO::STATUS_GOOD);
+$dao->setStatus($e2, ClickHistoryDAO::STATUS_DROPPED);
+$exec("UPDATE `_click_history` SET status = 'later' WHERE id_entry = {$e3}");
+$dao->setStatus($e4, ClickHistoryDAO::STATUS_GOOD);
+$dao->setStatus('1759276800000005', ClickHistoryDAO::STATUS_GOOD);
+
+$figures = $dao->statsByFeed();
+$check('the figures: one row per feed and category, most opened first', $figures === [
+	['feed_name' => 'Feed', 'category_name' => 'Cat', 'id_feed' => 1, 'opened' => 3, 'good' => 1, 'dropped' => 1, 'unrated' => 1],
+	// MAX() over a row that has an id and one that has none still yields the id.
+	['feed_name' => 'Other feed', 'category_name' => 'Cat', 'id_feed' => 2, 'opened' => 2, 'good' => 2, 'dropped' => 0, 'unrated' => 0],
+	['feed_name' => 'Feed', 'category_name' => 'Moved', 'id_feed' => 1, 'opened' => 1, 'good' => 0, 'dropped' => 0, 'unrated' => 1],
+]);
+// The grouping is the whole table seen from another angle, so nothing may fall
+// out of it.
+$check('the figures account for every row in the table', array_sum(array_column($figures, 'opened')) === $dao->count() && $dao->count() === 6);
 
 // --- The history page on a table nobody has touched yet ----------------------
 // What indexAction() does, in its order, as the first thing in a process: create
