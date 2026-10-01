@@ -240,7 +240,7 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		if (ctype_digit($id)) {
 			(new ClickHistoryDAO())->delete($id);
 		}
-		$this->backToIndex();
+		$this->backToIndex(self::carriedParams());
 	}
 
 	public function clearAction(): void {
@@ -266,9 +266,25 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 	 * Back to the first page rather than to the page the deletion happened on:
 	 * removing an entry shifts every later one forward, so the page number the
 	 * form came from no longer points at what the user was looking at.
+	 *
+	 * @param array<string,string> $params
 	 */
-	private function backToIndex(): void {
-		Minz_Request::forward(['c' => 'clickhistory', 'a' => 'index'], true);
+	private function backToIndex(array $params = []): void {
+		Minz_Request::forward(['c' => 'clickhistory', 'a' => 'index', 'params' => $params], true);
+	}
+
+	/**
+	 * The filter and the grouping the form was sent from. The list the user comes
+	 * back to has to be the one they left: dropping either would silently change
+	 * what they are looking at.
+	 *
+	 * @return array<string,string>
+	 */
+	private static function carriedParams(): array {
+		return array_filter([
+			'status' => self::requestedStatus(),
+			'group' => Minz_Request::paramString('group') === 'category' ? 'category' : null,
+		], static fn(?string $value): bool => $value !== null);
 	}
 
 	/**

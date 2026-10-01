@@ -18,6 +18,8 @@ existed in `metadata.json` during development but were never tagged or released.
 - The CSV export follows RFC 4180: a headline containing `\"` used to break
   its cell for every reader that does, and from PHP 8.4 on each exported row
   also raised a deprecation warning.
+- Deleting an entry keeps the status filter and the grouping by category;
+  it used to drop back to the unfiltered list by date.
 
 ### Changed
 
