@@ -1,0 +1,18 @@
+# What `git archive` leaves out: the release archive on GitHub and the deploy
+# script (../scripts/deploy-extension.sh) both ship only what FreshRSS loads,
+# plus the licence, the README and the changelog. A clone keeps everything, so
+# CI is unaffected.
+/.github/ export-ignore
+/tests/ export-ignore
+/scripts/ export-ignore
+/composer.json export-ignore
+/composer.lock export-ignore
+/package.json export-ignore
+/pnpm-lock.yaml export-ignore
+/pnpm-workspace.yaml export-ignore
+/phpcs.xml export-ignore
+/phpstan.neon export-ignore
+/eslint.config.mjs export-ignore
+/.gitignore export-ignore
+/.gitattributes export-ignore
+/TODO.md export-ignore

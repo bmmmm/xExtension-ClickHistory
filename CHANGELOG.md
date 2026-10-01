@@ -25,6 +25,8 @@ existed in `metadata.json` during development but were never tagged or released.
   instead of the deprecated `AGPL-3.0`, and the README's install step points at
   the latest release rather than the repository — both matching the sibling
   Share via QR Code repo, where these were fixed earlier.
+- The release archive holds the extension, its licence, README and changelog,
+  and nothing else: tests, CI and tooling configuration stay in the repository.
 
 ### Fixed
 
