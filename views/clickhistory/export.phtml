@@ -26,7 +26,7 @@
 			// PHP's default `\` leaves the quote in a headline's `\"` undoubled, so
 			// an RFC 4180 reader ends the cell there (tests/export.php) — and
 			// leaving the argument out is deprecated from PHP 8.4 on.
-			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'status', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso'], escape: '');
+			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'status', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso']);
 			// Straight from the statement to the output stream: this code holds one
 			// row at a time and never builds its own copy of the history. (pdo_pgsql
 			// still buffers the result set on its side; on MySQL core switches that
@@ -43,7 +43,7 @@
 					date(DATE_ATOM, $item['clicked_at']),
 					$item['first_clicked_at'],
 					date(DATE_ATOM, $item['first_clicked_at']),
-				], escape: '');
+				]);
 			}
 			fclose($out);
 		}
