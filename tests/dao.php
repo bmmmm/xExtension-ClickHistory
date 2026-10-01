@@ -56,9 +56,19 @@ $user = $user === false ? null : $user;
 $password = getenv('CLICKHISTORY_TEST_PASSWORD');
 $password = $password === false ? null : $password;
 
-// The error mode Minz_ModelPdo::dbConnect() sets; the rest is the classes' own.
+// What Minz_ModelPdo::dbConnect() adds on top of the classes' own settings: the
+// error mode everywhere, and on MySQL a utf8mb4 connection — without it a
+// headline with a four-byte character (an emoji) cannot be stored at all.
 $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT];
 $dbType = strtolower(substr($dsn, 0, (int)strpos($dsn . ':', ':')));
+if ($dbType === 'mysql') {
+	$dsn .= ';charset=utf8mb4';
+	if (class_exists('Pdo\Mysql')) {
+		$options[Pdo\Mysql::ATTR_INIT_COMMAND] = 'SET NAMES utf8mb4';	// PHP 8.4+, as core does it
+	} else {
+		$options[PDO::MYSQL_ATTR_INIT_COMMAND] = 'SET NAMES utf8mb4';	// PHP < 8.4
+	}
+}
 try {
 	$pdo = match ($dbType) {
 		'mysql' => new Minz_PdoMysql($dsn, $user, $password, $options),
@@ -149,9 +159,10 @@ $e1 = '1759276800000001';
 $e2 = '1759276800000002';
 $e3 = '1759276800000003';
 $e4 = '1759276800000004';
+$unicodeTitle = 'Café über Ünïcödé 🎉';
 $recorded = $dao->record($e1, 'https://example.org/1', 'One', 'Feed', 1, 'Cat', 10, 100) &&
 	$dao->record($e2, 'https://example.org/2', 'Two', 'Feed', 1, 'Cat', 10, 200) &&
-	$dao->record($e3, 'https://example.org/3', 'Three', 'Other feed', 2, '', null, 300) &&
+	$dao->record($e3, 'https://example.org/3', $unicodeTitle, 'Other feed', 2, '', null, 300) &&
 	$dao->record($e4, 'https://example.org/4', 'Four', 'Feed', 1, 'Cat', 10, 400);
 $check('four entries are recorded', $recorded && $dao->count() === 4);
 
@@ -171,6 +182,7 @@ $check('opening it again keeps its rating', $stored('status', $e1) === ClickHist
 
 $all = $dao->listEntries(100, 0);
 $check('the list is newest first, ids intact', $ids($all) === [$e1, $e4, $e3, $e2]);
+$check('a headline with an umlaut and a four-byte emoji survives', ($all[2]['title'] ?? '') === $unicodeTitle);
 $check('an unknown status is listed as unrated', ($all[1]['status'] ?? '') === ClickHistoryDAO::STATUS_UNRATED);
 
 $paged = array_merge($ids($dao->listEntries(2, 0)), $ids($dao->listEntries(2, 2)));
