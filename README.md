@@ -180,7 +180,7 @@ The page itself needs no markup of core's: it is reached through the
 ```sh
 # JavaScript tests (click detection, the once-per-load guard, and the core-markup
 # selectors against fixtures from the 1.29.0 views). Needs `pnpm install` first:
-# the selector tests parse their fixtures with linkedom.
+# the selector tests parse their fixtures with linkedom. `pnpm test` is the same.
 node --test tests/*.test.js
 
 # Schema upgrade and upsert, against a real database (in-memory SQLite by

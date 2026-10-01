@@ -10,6 +10,7 @@
 	"scripts": {
 		"preinstall": "node -e \"const ua=process.env.npm_config_user_agent||'';if(!ua.startsWith('pnpm/')){console.error('\\n  xExtension-ClickHistory is pnpm-only (supply-chain policy). Use: pnpm install - npm/yarn are blocked.\\n');process.exit(1)}\"",
 		"eslint": "eslint .",
+		"test": "node --test tests/*.test.js",
 		"deps:check": "sh scripts/deps-check.sh"
 	},
 	"devDependencies": {

@@ -11,3 +11,6 @@ vendor/bin/phpcs .
 # The machine's php.ini may cap memory at 128M (setup-php in CI does not).
 vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 pnpm run eslint
+# The JS tests too: linkedom is a devDependency only they use, so a bump of it
+# would otherwise pass this gate without a single line of it having run.
+pnpm test
