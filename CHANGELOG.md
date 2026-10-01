@@ -13,6 +13,8 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-01
+
 ### Added
 
 - A notification when a rating, a deletion or clearing the history could not
@@ -151,7 +153,8 @@ existed in `metadata.json` during development but were never tagged or released.
 - A confirmation wording the core can never show was dropped rather than left in
   place looking as if it worked.
 
-[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.4.0...v0.5.0
