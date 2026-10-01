@@ -35,6 +35,9 @@ existed in `metadata.json` during development but were never tagged or released.
   also raised a deprecation warning.
 - Deleting an entry keeps the status filter and the grouping by category;
   it used to drop back to the unfiltered list by date.
+- The *Unrated* filter lists entries with a status this version does not know
+  (hand-edited, or left by a later version), which its count and every other
+  page already showed as unrated.
 
 ## [0.6.0] - 2026-08-04
 

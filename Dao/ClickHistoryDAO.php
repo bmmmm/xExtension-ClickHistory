@@ -412,11 +412,16 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 
 	/**
 	 * The binding that goes with ClickHistorySchema::statusClause(): none at all
-	 * for every status, since the clause is empty then.
+	 * for every status, since the clause is empty then, and the two judged states
+	 * for unrated, which is whatever is neither.
 	 *
 	 * @return array<string,string>
 	 */
 	private static function statusParam(?string $status): array {
-		return $status === null ? [] : [':status' => $status];
+		return match ($status) {
+			null => [],
+			self::STATUS_UNRATED => [':good' => self::STATUS_GOOD, ':dropped' => self::STATUS_DROPPED],
+			default => [':status' => $status],
+		};
 	}
 }

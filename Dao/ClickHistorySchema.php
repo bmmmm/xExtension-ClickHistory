@@ -189,9 +189,21 @@ final class ClickHistorySchema {
 			: 'ORDER BY clicked_at DESC, id_entry DESC';
 	}
 
-	/** Interpolated, but never with a caller's value — the status itself is bound. */
+	/**
+	 * Interpolated, but never with a caller's value — the statuses are bound.
+	 *
+	 * Unrated is everything that is neither good nor dropped, not the literal
+	 * value: a status nobody here wrote (hand-edited, or left by a later version)
+	 * is shown and counted as unrated everywhere else, and the filter has to list
+	 * what its own count says. The two placeholders are `:good` and `:dropped`;
+	 * any other status binds `:status`.
+	 */
 	public static function statusClause(?string $status): string {
-		return $status === null ? '' : 'WHERE status = :status';
+		return match ($status) {
+			null => '',
+			'unrated' => 'WHERE status NOT IN (:good, :dropped)',
+			default => 'WHERE status = :status',
+		};
 	}
 
 	/**

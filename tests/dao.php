@@ -176,9 +176,9 @@ $check('an unknown status is listed as unrated', ($all[1]['status'] ?? '') === C
 $paged = array_merge($ids($dao->listEntries(2, 0)), $ids($dao->listEntries(2, 2)));
 $check('two pages of two hold every entry exactly once', $paged === $ids($all));
 
-// The filter matches the stored value, so the row whose status is unknown is in
-// none of the three.
-foreach (['all' => 4, ClickHistoryDAO::STATUS_UNRATED => 1, ClickHistoryDAO::STATUS_GOOD => 1, ClickHistoryDAO::STATUS_DROPPED => 1] as $status => $expected) {
+// The row whose status is unknown is listed as unrated, so the unrated filter has
+// to show it too — and count it, or the filter link and the page disagree.
+foreach (['all' => 4, ClickHistoryDAO::STATUS_UNRATED => 2, ClickHistoryDAO::STATUS_GOOD => 1, ClickHistoryDAO::STATUS_DROPPED => 1] as $status => $expected) {
 	$status = $status === 'all' ? null : $status;
 	$check(
 		'count(' . ($status ?? 'all') . ') matches the rows listed under it',
@@ -193,6 +193,11 @@ $check('the filter counts fold an unknown status into unrated', $counts === [
 	ClickHistoryDAO::STATUS_DROPPED => 1,
 ]);
 $check('the filter counts add up to the total', array_sum($counts) === $dao->count());
+$check(
+	'the unrated filter lists the unrated and the unknown row, as its count says',
+	$ids($dao->listEntries(100, 0, false, ClickHistoryDAO::STATUS_UNRATED)) === [$e4, $e3] &&
+		$counts[ClickHistoryDAO::STATUS_UNRATED] === $dao->count(ClickHistoryDAO::STATUS_UNRATED)
+);
 
 // The export walks the whole result set one row at a time. On MySQL that result is
 // unbuffered, so the connection is only free again once it has been read to the end.
