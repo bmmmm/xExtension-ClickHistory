@@ -7,9 +7,10 @@ declare(strict_types=1);
 // opened a second time.
 //
 // The statements are the real ones. ClickHistorySchema exists so that they can be
-// required without a FreshRSS context — the DAO around them extends Minz_ModelPdo
-// and cannot be instantiated here, but the SQL it runs is exactly what this file
-// executes, so an edit there is caught rather than silently diverging from a copy.
+// required on their own and run one at a time on a bare PDO — the SQL the DAO runs
+// is exactly what this file executes, so an edit there is caught rather than
+// silently diverging from a copy. The DAO itself, on core's connection classes,
+// is tests/dao.php.
 //
 // Which database it runs against comes from the environment, default in-memory
 // SQLite:

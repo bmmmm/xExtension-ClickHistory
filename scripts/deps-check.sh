@@ -4,6 +4,7 @@
 # bump installs only one; the same linters as the lint job of
 # .github/workflows/ci.yml, against FreshRSS core at the ref CI pins.
 set -eu
+# The ref is FRESHRSS_CORE_REF in ci.yml; keep the two in step.
 [ -d .freshrss-core ] || git clone -q --depth 1 --branch 1.29.0 https://github.com/FreshRSS/FreshRSS .freshrss-core
 pnpm install --frozen-lockfile --silent
 composer install --no-interaction --quiet

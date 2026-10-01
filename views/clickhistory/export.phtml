@@ -23,9 +23,9 @@
 			fwrite($out, "\xEF\xBB\xBF");
 			fputcsv($out, ['id_entry', 'title', 'url', 'feed', 'category', 'status', 'clicked_at', 'clicked_at_iso', 'first_clicked_at', 'first_clicked_at_iso']);
 			// Straight from the statement to the output stream: this code holds one
-			// row at a time and never builds its own copy of the history. (The
-			// driver may still buffer the result set on its side — pdo_mysql and
-			// pdo_pgsql do by default — which is outside this code's control.)
+			// row at a time and never builds its own copy of the history. (pdo_pgsql
+			// still buffers the result set on its side; on MySQL core switches that
+			// off — see ClickHistoryDAO::streamAll().)
 			foreach ($this->exportRows as $item) {
 				fputcsv($out, [
 					$item['id_entry'],

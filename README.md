@@ -189,6 +189,11 @@ node --test tests/*.test.js
 #     CLICKHISTORY_TEST_USER=root CLICKHISTORY_TEST_PASSWORD=… php tests/schema.php
 php tests/schema.php
 
+# The DAO on top of those statements, through core's own Minz_PdoSqlite /
+# Minz_PdoMysql / Minz_PdoPgsql (same environment variables). Needs the
+# .freshrss-core checkout from the PHPStan step below.
+php tests/dao.php
+
 # JavaScript style (ESLint, aligned with FreshRSS core's own eslint.config.js)
 pnpm install
 pnpm run eslint

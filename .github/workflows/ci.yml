@@ -11,6 +11,12 @@ on:
 permissions:
   contents: read
 
+# FreshRSS core, checked out by both jobs: the oldest release this extension
+# supports, so using anything newer than it fails the build rather than a
+# stranger's install. scripts/deps-check.sh clones the same ref.
+env:
+  FRESHRSS_CORE_REF: '1.29.0'
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -196,17 +202,22 @@ jobs:
       # (Minz_Extension, Minz_ModelPdo and friends), which do not live in this
       # repository. Mirrors how github.com/FreshRSS/Extensions lints third-party
       # extensions: check core out as a sibling directory purely to resolve those
-      # classes, excluded from analysis itself (see phpstan.neon).
-      - name: Git checkout FreshRSS core for PHPStan
+      # classes, excluded from analysis itself (see phpstan.neon). tests/dao.php
+      # loads core's connection classes from the same checkout.
+      - name: Git checkout FreshRSS core
         if: ${{ !cancelled() }}
         uses: actions/checkout@v7
         with:
           repository: FreshRSS/FreshRSS
-          # The oldest release this extension supports, so using anything newer
-          # than it fails the build rather than a stranger's install.
-          ref: '1.29.0'
+          ref: ${{ env.FRESHRSS_CORE_REF }}
           path: .freshrss-core
           persist-credentials: false
+
+      # The DAO on core's own Minz_PdoSqlite, as FreshRSS hands it over; the
+      # MySQL and PostgreSQL connections run in the `schema` job below.
+      - name: Check the DAO through core's connection classes
+        if: ${{ !cancelled() }}
+        run: php tests/dao.php
 
       - name: Use Composer cache
         if: ${{ !cancelled() }}
@@ -306,3 +317,23 @@ jobs:
           CLICKHISTORY_TEST_USER: ${{ matrix.user }}
           CLICKHISTORY_TEST_PASSWORD: ${{ matrix.password }}
         run: php tests/schema.php
+
+      # The DAO needs core's Minz_PdoMysql and Minz_PdoPgsql: what they set on the
+      # connection — unbuffered queries on MySQL, native prepares on both — is
+      # what a bare PDO in tests/schema.php does not reproduce.
+      - name: Git checkout FreshRSS core
+        if: ${{ !cancelled() }}
+        uses: actions/checkout@v7
+        with:
+          repository: FreshRSS/FreshRSS
+          ref: ${{ env.FRESHRSS_CORE_REF }}
+          path: .freshrss-core
+          persist-credentials: false
+
+      - name: Check the DAO on ${{ matrix.backend }} through core's connection classes
+        if: ${{ !cancelled() }}
+        env:
+          CLICKHISTORY_TEST_DSN: ${{ matrix.dsn }}
+          CLICKHISTORY_TEST_USER: ${{ matrix.user }}
+          CLICKHISTORY_TEST_PASSWORD: ${{ matrix.password }}
+        run: php tests/dao.php

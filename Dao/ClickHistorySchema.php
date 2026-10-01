@@ -4,12 +4,12 @@ declare(strict_types=1);
 /**
  * Every SQL string the extension runs, per dialect and with nothing else in it.
  *
- * Split out of ClickHistoryDAO so that it can be executed without one: the DAO
- * extends Minz_ModelPdo and needs a FreshRSS context, which a test harness has
- * no way of standing up. tests/schema.php requires this file and runs these
- * exact strings against a real database, so the schema upgrade — which happens
- * once per installation and is invisible until it has already cost somebody
- * their history — is checked rather than described.
+ * Split out of ClickHistoryDAO so that it can be executed without one:
+ * tests/schema.php requires this file and runs these exact strings on a bare PDO,
+ * statement by statement and against a table of every earlier version, so the
+ * schema upgrade — which happens once per installation and is invisible until it
+ * has already cost somebody their history — is checked rather than described.
+ * tests/dao.php then runs the DAO around them on core's own connection classes.
  *
  * The table is written as `_click_history` throughout: Minz_Pdo::autoPrefix()
  * replaces the leading backtick-underscore with the real prefix, which is empty
