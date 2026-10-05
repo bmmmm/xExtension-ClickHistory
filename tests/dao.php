@@ -64,6 +64,7 @@ $dbType = strtolower(substr($dsn, 0, (int)strpos($dsn . ':', ':')));
 if ($dbType === 'mysql') {
 	$dsn .= ';charset=utf8mb4';
 	if (class_exists('Pdo\Mysql')) {
+		assert(is_int(Pdo\Mysql::ATTR_INIT_COMMAND));	// For PHPStan with PHP 8.4+, as core does it
 		$options[Pdo\Mysql::ATTR_INIT_COMMAND] = 'SET NAMES utf8mb4';	// PHP 8.4+, as core does it
 	} else {
 		$options[PDO::MYSQL_ATTR_INIT_COMMAND] = 'SET NAMES utf8mb4';	// PHP < 8.4

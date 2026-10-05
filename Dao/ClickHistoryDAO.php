@@ -192,7 +192,6 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return;
 		}
 		while (true) {
-			/** @var mixed $row */
 			$row = $stm->fetch(PDO::FETCH_ASSOC);
 			if (!is_array($row)) {
 				break;
