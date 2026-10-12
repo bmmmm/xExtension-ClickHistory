@@ -50,7 +50,8 @@ existed in `metadata.json` during development but were never tagged or released.
   theme had already switched to its narrow layout. The breakpoint is now 841px,
   matching core's `max-width: 840px`.
 - The history page's navigation bars (reading views, rating filter, pages)
-  carry an `aria-label`, so a screen reader's landmark list tells them apart.
+  carry an `aria-label` for a screen reader's landmark list. The pagination
+  above and below the table shares one name.
 - On PostgreSQL, a newly created table's index gets a name that fits in 63
   bytes with the longest user name; the old name was cut. Existing tables
   keep their index.

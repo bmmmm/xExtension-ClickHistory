@@ -327,11 +327,17 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 	 * An entry id as core stores it: a BIGINT, so digits only and no larger than
 	 * the biggest signed 64-bit number. Anything longer would only fail later, in
 	 * the database, as an out-of-range error instead of a refused request.
+	 *
+	 * Compared as a string against the literal rather than against PHP_INT_MAX:
+	 * on a 32-bit PHP, which core still supports, that is 2147483647, and every
+	 * real entry id — 16 digits — would be refused. Leading zeros are dropped
+	 * first, so a padded id is judged by its value, not its length.
 	 */
 	private static function isEntryId(string $id): bool {
-		$max = (string)PHP_INT_MAX;
+		$max = '9223372036854775807';
+		$digits = ltrim($id, '0');
 		return ctype_digit($id) &&
-			(strlen($id) < strlen($max) || (strlen($id) === strlen($max) && strcmp($id, $max) <= 0));
+			(strlen($digits) < strlen($max) || (strlen($digits) === strlen($max) && strcmp($digits, $max) <= 0));
 	}
 
 	/**

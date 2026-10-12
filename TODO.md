@@ -18,3 +18,23 @@
 From the review rounds of 2026-10-12/13; each one commit with a gate that can fail.
 
 - **MySQL collation of `status`**: only if a symptom shows.
+
+From the review of 2026-10-13 (copy link and B2–B11), all P2:
+
+- **Copy button not tied to its markup in a test**: `static/history.js` `init()`
+  and the selector/`data-*` names are only exercised against a hand-built
+  object; a renamed class in `index.phtml` would leave every gate green. A
+  linkedom test over the rendered row would close it.
+- **Missing index is no longer repaired**: the index is only created with the
+  table, so a `CREATE INDEX` that failed after `CREATE TABLE` stays missing.
+- **Half-upgraded table from ≤ 0.7.1**: the old code could add `status` while
+  `id_category` had failed; the new fast path takes that table as current and
+  every click fails. Not a regression, and no such table is known.
+- **Concurrent first `CREATE` on PostgreSQL** can fail the slower request once
+  (unique_violation); only the ALTER path re-probes.
+- **`pk_` prefix is broad**: `pk_id` is removed too; Matomo's legacy names could
+  be listed exactly instead.
+- **Empty pairs next to a removed parameter** stay (`?utm_source=x&&a=1` →
+  `?&a=1`); cosmetic.
+- **MariaDB 10.6 left CI** while Ubuntu 22.04 still ships it; SQL needing
+  10.7+ would now pass CI.

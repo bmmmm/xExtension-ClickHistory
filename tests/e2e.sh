@@ -195,6 +195,8 @@ check 'a deletion with an id past BIGINT says it was not saved' \
 	"$(contains "$(post 'c=clickhistory&a=delete' --data 'id=9223372036854775808' -L)" 'could not be saved')"
 check 'a click with an id past BIGINT is a 400' \
 	"$(contains "$(post 'c=clickhistory&a=record' --data 'id=9223372036854775808' -w ' %{http_code}')" '"bad_id"} 400')"
+check 'a zero-padded id that fits is looked up, not refused for its length' \
+	"$(contains "$(post 'c=clickhistory&a=record' --data 'id=00000000000000000000042' -w ' %{http_code}')" '"unknown_entry"} 404')"
 check 'a click with the largest BIGINT is looked up, not refused' \
 	"$(contains "$(post 'c=clickhistory&a=record' --data 'id=9223372036854775807' -w ' %{http_code}')" '"unknown_entry"} 404')"
 
