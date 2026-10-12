@@ -13,6 +13,8 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-13
+
 ### Added
 
 - A **Copy link** button on every row of the history page puts the article's
@@ -234,7 +236,8 @@ existed in `metadata.json` during development but were never tagged or released.
 - A confirmation wording the core can never show was dropped rather than left in
   place looking as if it worked.
 
-[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.1...v0.6.0
