@@ -187,10 +187,13 @@ The page itself needs no markup of core's: it is reached through the
 ## Development
 
 ```sh
-# JavaScript tests (click detection, the once-per-load guard, and the core-markup
-# selectors against fixtures from the 1.29.0 views). Needs `pnpm install` first:
-# the selector tests parse their fixtures with linkedom. `pnpm test` is the same.
-node --test tests/*.test.js
+# JavaScript tests (click detection, the request path, the once-per-load guard,
+# and the core-markup selectors against fixtures from the 1.29.0 views). Needs
+# `pnpm install` first: the selector tests parse their fixtures with linkedom.
+# Through the script rather than `node --test tests/*.test.js` directly: it
+# fails a run where a test was skipped, marked todo, or no test ran at all,
+# which node alone reports as success.
+pnpm test
 
 # Schema upgrade and upsert, against a real database (in-memory SQLite by
 # default). CI additionally runs this against mysql:8 and postgres:16:
@@ -221,7 +224,7 @@ vendor/bin/phpcs .
 # directory to resolve the Minz_Extension classes this extension extends —
 # see phpstan.neon for why, and .github/workflows/ci.yml for how CI does it.
 git clone --depth 1 --branch 1.29.0 https://github.com/FreshRSS/FreshRSS .freshrss-core
-vendor/bin/phpstan analyse
+vendor/bin/phpstan analyse --memory-limit=1G
 ```
 
 Without PHP installed locally, the same checks run in a container on the exact

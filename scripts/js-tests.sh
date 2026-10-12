@@ -23,8 +23,13 @@ cat "$log"
 # everything is passing — a guard that goes off when the tests are fine gets
 # deleted, and then nothing checks the real failure mode. "Nothing was skipped
 # and something ran" is that failure mode.
+#
+# `todo` is the other way a test stops counting: node runs it but exits 0 even
+# when it fails, so a test.todo() is as unenforced as a skipped one.
 passed=$(sed -n 's/^# pass \([0-9]*\)$/\1/p' "$log")
 skipped=$(sed -n 's/^# skipped \([0-9]*\)$/\1/p' "$log")
-echo "passed=${passed:-0} skipped=${skipped:-0}"
+todo=$(sed -n 's/^# todo \([0-9]*\)$/\1/p' "$log")
+echo "passed=${passed:-0} skipped=${skipped:-0} todo=${todo:-0}"
 [ "${skipped:-0}" -eq 0 ] || { echo 'a test was skipped'; exit 1; }
+[ "${todo:-0}" -eq 0 ] || { echo 'a test is marked todo'; exit 1; }
 [ "${passed:-0}" -gt 0 ] || { echo 'no test ran at all'; exit 1; }
