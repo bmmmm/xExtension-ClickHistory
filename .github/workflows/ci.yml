@@ -107,6 +107,7 @@ jobs:
             || { echo "Controllers/${base}Controller.php has no class FreshExtension_${base}_Controller"; exit 1; }
           # Minz_Request filters the controller name with ctype_alnum, so a base
           # name carrying a separator can never be routed to at all.
+          # shellcheck disable=SC2016 # $argv is PHP's, not the shell's
           php -r 'exit(ctype_alnum($argv[1]) ? 0 : 1);' "$base" \
             || { echo "controller base name '$base' is not alphanumeric"; exit 1; }
 
