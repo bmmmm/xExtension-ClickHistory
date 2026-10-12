@@ -48,6 +48,9 @@ return array(
 			'clear' => 'Gesamten Verlauf löschen',
 			'export_json' => 'Als JSON herunterladen',
 			'export_csv' => 'Als CSV herunterladen',
+			'copy_link' => 'Link kopieren',
+			'copied' => 'Kopiert',
+			'copy_failed' => 'Kopieren fehlgeschlagen',
 		),
 		'feedback' => array(
 			'not_saved' => 'Die Änderung konnte nicht gespeichert werden. Details stehen in den Protokollen von FreshRSS.',

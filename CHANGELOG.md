@@ -13,6 +13,13 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+### Added
+
+- A **Copy link** button on every row of the history page puts the article's
+  address on the clipboard without its tracking parameters (`utm_*`, `mtm_*`,
+  `pk_*`, `fbclid`, `gclid` and other click ids). The rest of the query and the
+  fragment stay as the feed had them.
+
 ## [0.7.1] - 2026-10-13
 
 ### Fixed

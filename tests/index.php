@@ -139,7 +139,9 @@ $rows = [
 	IndexView::row('6', 'Script link to a site', 'javascript:fetch("https://example.org/")'),
 	IndexView::row('4', $script, 'https://example.org/' . $script, $script, $script),
 	IndexView::row('5', 'Mixed case', 'HTTPS://example.org/b'),
+	IndexView::row('7', 'Tracked', 'https://example.org/c?utm_source=feed&id=7&fbclid=x#top'),
 ];
+$webRows = 4;
 $counts = ['unrated' => 5, 'good' => 0, 'dropped' => 0];
 
 foreach ([false, true] as $byCategory) {
@@ -153,8 +155,42 @@ foreach ([false, true] as $byCategory) {
 	$check("a javascript: URL is shown as text{$mode}", str_contains($html, '<code>javascript:alert(1)</code>'));
 	$check("no markup from a feed reaches the page{$mode}", !str_contains($html, '<script>'));
 	$check("a quote in a link cannot leave the attribute{$mode}", str_contains($html, 'href="https://example.org/&quot;&gt;&lt;script&gt;'));
-	// Title, feed, category (column or group heading) and the link: four times.
-	$check("a title, feed and category are escaped{$mode}", substr_count($html, '&lt;script&gt;alert(1)&lt;/script&gt;') === 4);
+	// Title, feed, category (column or group heading), the link and the copy
+	// button's address: five times.
+	$check("a title, feed and category are escaped{$mode}", substr_count($html, '&lt;script&gt;alert(1)&lt;/script&gt;') === 5);
+	$check("every web link has a copy button, and nothing else has one{$mode}", substr_count($html, 'click-history-copy') === $webRows);
+	$check("the copy button carries the link without its tracking parameters{$mode}",
+		str_contains($html, 'data-url="https://example.org/c?id=7#top"'));
+	$check("the copy button's address is escaped{$mode}", str_contains($html, 'data-url="https://example.org/a?x=1&amp;y=2"') &&
+		str_contains($html, 'data-url="https://example.org/&quot;&gt;&lt;script&gt;'));
+	$check("the copy button never submits a form{$mode}",
+		substr_count($html, '<button type="button" class="btn click-history-copy"') === $webRows);
+}
+
+// What the copy button copies.
+$cleanUrlCases = [
+	'tracking before the rest, fragment kept' => ['https://example.org/p?utm_source=x&id=5#frag', 'https://example.org/p?id=5#frag'],
+	'nothing but tracking: no ? left' => ['https://example.org/p?utm_source=x&utm_medium=rss', 'https://example.org/p'],
+	'nothing but tracking, with a fragment' => ['https://example.org/p?fbclid=abc#top', 'https://example.org/p#top'],
+	'the name in another case' => ['https://example.org/p?UTM_Source=x&id=5', 'https://example.org/p?id=5'],
+	'the name percent-encoded' => ['https://example.org/p?%75tm_source=x&id=5', 'https://example.org/p?id=5'],
+	'a click id at the end' => ['https://example.org/p?id=5&fbclid=abc', 'https://example.org/p?id=5'],
+	'Matomo and Piwik prefixes' => ['https://example.org/p?mtm_campaign=a&pk_kwd=b&id=5', 'https://example.org/p?id=5'],
+	'a parameter without a value' => ['https://example.org/p?gclid&id=5', 'https://example.org/p?id=5'],
+	'nothing to remove: unchanged, empty pairs and all' => ['https://example.org/p?a=1&&b=2', 'https://example.org/p?a=1&&b=2'],
+	'nothing to remove: a trailing ? stays' => ['https://example.org/p?', 'https://example.org/p?'],
+	'no query at all' => ['https://example.org/p#utm_source=x', 'https://example.org/p#utm_source=x'],
+	'a ? in the fragment is not a query' => ['https://example.org/p#a?utm_source=x', 'https://example.org/p#a?utm_source=x'],
+	'ref, source and s are content on some sites' => ['https://example.org/p?ref=a&source=b&s=c', 'https://example.org/p?ref=a&source=b&s=c'],
+	'encoding and order of the rest untouched' => ['https://example.org/p?b=%20x&utm_id=1&a.b=1&c[]=2', 'https://example.org/p?b=%20x&a.b=1&c[]=2'],
+	'a name that only contains a tracking one' => ['https://example.org/p?my_utm_source=x&xfbclid=y', 'https://example.org/p?my_utm_source=x&xfbclid=y'],
+];
+foreach ($cleanUrlCases as $what => [$url, $expected]) {
+	$actual = ClickHistoryExtension::cleanUrl($url);
+	$check("cleanUrl: {$what}", $actual === $expected);
+	if ($actual !== $expected) {
+		echo "     got {$actual}\n";
+	}
 }
 
 $clear = 'a=clear';

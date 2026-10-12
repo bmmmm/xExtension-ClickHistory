@@ -23,6 +23,9 @@ This extension records that one gesture and nothing else.
   recorded) — plus the core's <kbd>go to website</kbd> shortcut.
 * Shows the collection under **Click history**: headline, feed, category, when
   it was last opened, one page at a time.
+* **Copy link** on each row copies the article's address without its tracking
+  parameters (`utm_*`, `fbclid`, `gclid` and the like) — to pass it on without
+  opening it first. Everything else in the address stays as it was.
 * **Where to find it:** the **Click history** entry in the header menu — the
   gear icon at the top right, next to *Logs* and *About*. The extension's
   settings page links there directly too. There is deliberately no toolbar

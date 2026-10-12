@@ -123,6 +123,18 @@
 									: '' ?>><?= timestamptodate($item['clicked_at']) ?></time>
 						</td>
 						<td class="click-history-actions">
+							<?php if ($isWebLink) { ?>
+								<?php
+									// Not a form and never a submit: the copying happens in
+									// static/history.js. A link that is not a link above gets
+									// nothing to copy here either.
+								?>
+								<button type="button" class="btn click-history-copy"
+									data-url="<?= htmlspecialchars(ClickHistoryExtension::cleanUrl($item['url']), ENT_COMPAT, 'UTF-8') ?>"
+									data-copied="<?= htmlspecialchars(_t('ext.click_history.action.copied'), ENT_COMPAT, 'UTF-8') ?>"
+									data-failed="<?= htmlspecialchars(_t('ext.click_history.action.copy_failed'), ENT_COMPAT, 'UTF-8') ?>"><?=
+									_t('ext.click_history.action.copy_link') ?></button>
+							<?php } ?>
 							<form method="post" action="<?= _url('clickhistory', 'rate') ?>">
 								<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
 								<input type="hidden" name="id" value="<?= htmlspecialchars($item['id_entry'], ENT_COMPAT, 'UTF-8') ?>" />

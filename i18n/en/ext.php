@@ -48,6 +48,9 @@ return array(
 			'clear' => 'Delete the whole history',
 			'export_json' => 'Download as JSON',
 			'export_csv' => 'Download as CSV',
+			'copy_link' => 'Copy link',
+			'copied' => 'Copied',
+			'copy_failed' => 'Copy failed',
 		),
 		'feedback' => array(
 			'not_saved' => 'The change could not be saved. The details are in the FreshRSS logs.',

@@ -13,6 +13,18 @@ final class ClickHistoryExtension extends Minz_Extension {
 	private const PAGE_SIZE_MIN = 10;
 	private const PAGE_SIZE_MAX = 500;
 
+	/**
+	 * Query parameters that only say where a click came from. Kept short on
+	 * purpose: `ref`, `source` or `s` are tracking on one site and the article
+	 * id or the search term on the next, and a copied link that no longer
+	 * opens the article is worse than one with a campaign tag left in it.
+	 */
+	private const TRACKING_PREFIXES = ['utm_', 'mtm_', 'pk_'];
+	private const TRACKING_PARAMS = [
+		'fbclid', 'gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid', 'yclid', 'igshid', 'twclid', 'ttclid',
+		'mc_cid', 'mc_eid', '_hsenc', '_hsmi', 'mkt_tok', 'oly_anon_id', 'oly_enc_id', 'vero_id',
+	];
+
 	private static ?self $instance = null;
 
 	/**
@@ -42,9 +54,12 @@ final class ClickHistoryExtension extends Minz_Extension {
 		// pages it does anything on.
 		$controller = Minz_Request::controllerName();
 		// Every rule in the stylesheet is under `.click-history*`, which exists
-		// nowhere but this extension's own page.
+		// nowhere but this extension's own page, and the copy buttons the second
+		// script serves are only rendered there. Who may see that page is the
+		// controller's firstAction() to decide.
 		if ($controller === 'clickhistory') {
 			Minz_View::appendStyle($this->getFileUrl('style.css'));
+			Minz_View::appendScript($this->getFileUrl('history.js'));
 		}
 		// The click listener needs the stream, which is the `index` controller in
 		// all three reading modes (normal, reader, global). The extension's own
@@ -205,6 +220,46 @@ final class ClickHistoryExtension extends Minz_Extension {
 			ClickHistoryDAO::STATUS_GOOD => _t('ext.click_history.rate.good'),
 			ClickHistoryDAO::STATUS_DROPPED => _t('ext.click_history.rate.dropped'),
 		];
+	}
+
+	/**
+	 * The link with every tracking parameter taken out of its query, for the
+	 * history page's copy button. Everything else — the other parameters, their
+	 * order and encoding, the fragment — stays exactly as the feed had it, which
+	 * is why the query is cut up as a string: parse_str() and
+	 * http_build_query() would re-encode values, turn dots in names into
+	 * underscores and reorder arrays. A link without anything to remove comes
+	 * back unchanged, down to a trailing `?`.
+	 */
+	public static function cleanUrl(string $url): string {
+		$hash = strpos($url, '#');
+		$fragment = $hash === false ? '' : substr($url, $hash);
+		$rest = $hash === false ? $url : substr($url, 0, $hash);
+		$question = strpos($rest, '?');
+		if ($question === false) {
+			return $url;
+		}
+		$pairs = explode('&', substr($rest, $question + 1));
+		$kept = array_filter($pairs, static fn(string $pair): bool => !self::isTrackingParam($pair));
+		if (count($kept) === count($pairs)) {
+			return $url;
+		}
+		$query = implode('&', $kept);
+		return substr($rest, 0, $question) . ($query === '' ? '' : '?' . $query) . $fragment;
+	}
+
+	/** `UTM_Source=…` and `%75tm_source=…` are the same parameter to the site that reads them. */
+	private static function isTrackingParam(string $pair): bool {
+		$name = strtolower(rawurldecode(explode('=', $pair, 2)[0]));
+		if (in_array($name, self::TRACKING_PARAMS, true)) {
+			return true;
+		}
+		foreach (self::TRACKING_PREFIXES as $prefix) {
+			if (str_starts_with($name, $prefix)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

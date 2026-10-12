@@ -54,7 +54,8 @@ db="$core/data/users/$user/db.sqlite"
 
 # The extension switched on for the user, and two entries to click, one of them
 # with what core stores for "&" in a title, a link, a feed and a category name:
-# the HTML entity.
+# the HTML entity. The other one's link carries a tracking parameter for the
+# copy button to leave out.
 $php -r '
 	[, $config, $db] = $argv;
 	$conf = require $config;
@@ -65,7 +66,7 @@ $php -r '
 	$pdo->exec("INSERT INTO feed (id, url, category, name) VALUES (1, \"https://example.org/feed\", 2, \"Feed &amp; Co\")");
 	$entry = $pdo->prepare("INSERT INTO entry (id, guid, title, link, date, id_feed) VALUES (?, ?, ?, ?, 0, 1)");
 	$entry->execute(["1760000000000001", "a", "Tom &amp; Jerry", "https://example.org/a?x=1&amp;y=2"]);
-	$entry->execute(["1760000000000002", "b", "Second", "https://example.org/b"]);
+	$entry->execute(["1760000000000002", "b", "Second", "https://example.org/b?utm_source=feed&amp;id=7"]);
 ' "$core/data/users/$user/config.php" "$db" || exit 1
 
 # Something already answering on the port would be taken for this server.
@@ -162,6 +163,8 @@ check 'a recorded title is encoded once' "$(contains "$page" '>Tom &amp; Jerry</
 check 'a recorded link is encoded once' "$(contains "$page" 'href="https://example.org/a?x=1&amp;y=2"')"
 check 'the feed and the category are encoded once' "$(contains "$page" '>Feed &amp; Co</td>')$(contains "$page" '>News &amp; Views</td>')"
 check 'nothing is encoded twice' "$(lacks "$page" '&amp;amp;')"
+check 'the copy button carries the link without its tracking parameter' "$(contains "$page" 'data-url="https://example.org/b?id=7"')"
+check 'the history page loads the copy script' "$(contains "$page" 'xExtension-ClickHistory%2Fstatic%2Fhistory.js')"
 
 # 3 — a rating keeps the page's filter and grouping, and drops the page number
 # because a filter is active.

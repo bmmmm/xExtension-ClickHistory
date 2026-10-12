@@ -45,7 +45,8 @@
    the point: the destructive button should not sit flush against two that undo
    with a single click. Whether the two rating buttons themselves share a line
    is the media query above; both readings are fine, one is just shorter. */
-.click-history-actions form + form {
+.click-history-actions form + form,
+.click-history-copy + form {
 	margin-top: 0.3rem;
 }
 
