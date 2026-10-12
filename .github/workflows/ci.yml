@@ -234,17 +234,25 @@ jobs:
       # parameter is one from 8.4 on — can sit in any file, so every file is
       # compiled here, the tests included (their own bootstrap only starts
       # reporting once they are compiled). `php -l` prints such a deprecation and
-      # still exits 0, hence the grep over its output.
+      # still exits 0, hence the grep over its output — limited to this
+      # repository's files, so a startup warning from the runner's PHP is not
+      # read as one. A parse error exits 255, which makes xargs stop at that file;
+      # the `|| exit 1` keeps it going, so one run reports every file. And a find
+      # that matched nothing would pass both checks, hence the count.
       - name: Check PHP syntax and compile-time deprecations
         run: |
           php -v
           status=0
+          # shellcheck disable=SC2016 # $1 is sh -c's, expanded by the inner shell
           out=$(find . \( -path ./vendor -o -path ./node_modules -o -path ./.freshrss-core \) -prune -o \
             \( -name '*.php' -o -name '*.phtml' \) -print0 \
-            | xargs -0 -n1 php -d error_reporting=-1 -d display_errors=1 -l 2>&1) || status=$?
+            | xargs -0 -n1 sh -c 'php -d error_reporting=-1 -d display_errors=1 -l "$1" || exit 1' sh 2>&1) || status=$?
           printf '%s\n' "$out"
           test "$status" -eq 0 || exit "$status"
-          if printf '%s\n' "$out" | grep -E '^(PHP )?(Deprecated|Warning|Notice):'; then
+          files=$(printf '%s\n' "$out" | grep -c '^No syntax errors detected in ./' || true)
+          echo "compiled $files files"
+          test "$files" -gt 0 || { echo 'no PHP file was compiled'; exit 1; }
+          if printf '%s\n' "$out" | grep -E '^(PHP )?(Deprecated|Warning|Notice):.* in \./'; then
             echo 'PHP reported the lines above while compiling'
             exit 1
           fi
