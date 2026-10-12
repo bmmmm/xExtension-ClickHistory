@@ -13,6 +13,10 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+### Changed
+
+- CI runs the MariaDB leg on 12.3.3, the current LTS, instead of 10.11.19.
+
 ### Fixed
 
 - **Copy link** removed every parameter starting with `pk_`, a site's own

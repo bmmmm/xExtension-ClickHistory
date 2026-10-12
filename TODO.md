@@ -12,6 +12,9 @@
       from a backup silently contradicts — and then nothing repairs it. One
       probe on the newest column costs the same single statement and cannot
       disagree with the table it looks at.
+- [x] **MariaDB in CI: the current LTS only** (2026-10-13, user's call). 12.3.3
+      rather than the oldest supported LTS — what a new installation gets —
+      and one leg rather than both ends.
 
 ## Open (only on a symptom or on request)
 
@@ -32,5 +35,6 @@ From the review of 2026-10-13 (copy link and B2–B11), all P2:
   every click fails. Not a regression, and no such table is known.
 - **Concurrent first `CREATE` on PostgreSQL** can fail the slower request once
   (unique_violation); only the ALTER path re-probes.
-- **MariaDB 10.6 left CI** while Ubuntu 22.04 still ships it; SQL needing
-  10.7+ would now pass CI.
+- **MariaDB older than 12.3 is not in CI** (10.11 on Debian 12, 10.6 on
+  Ubuntu 22.04): SQL that needs a newer release would pass CI and fail there.
+  The current SQL ran green on 10.11.19 (2026-10-13).
