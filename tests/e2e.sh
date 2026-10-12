@@ -33,7 +33,9 @@ cleanup() {
 	rm -rf "$work"
 }
 trap cleanup EXIT
-trap 'exit 1' INT TERM
+# HUP too: a closed terminal would otherwise end the script without the EXIT
+# trap, leave php -S running, and the next run would find the port taken.
+trap 'exit 1' HUP INT TERM
 
 core="$work/core"
 cp -R "$root/.freshrss-core" "$core"

@@ -25,5 +25,3 @@ From the review rounds of 2026-10-12/13; each one commit with a gate that can fa
   open links without a click event and are not recorded.
 - **CI**: `mariadb:10.6` and `postgres:16` float within their series (MySQL is
   pinned), and MariaDB 10.6 is past its end of life — move to a supported LTS.
-- **tests/e2e.sh** traps only INT/TERM; a HUP or kill leaves `php -S` running
-  and the next run reports the port as in use.
