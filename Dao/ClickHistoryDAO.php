@@ -169,14 +169,19 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	 * builds no array of its own. (pdo_pgsql still buffers the whole result set on
 	 * its side; on MySQL core switches buffering off in Minz_PdoMysql, so the rows
 	 * arrive as they are read and the connection is busy until the last one has
-	 * been.) An error yields nothing, which the caller sees as an empty export — the same answer
-	 * the list-returning methods give.
+	 * been.)
 	 *
-	 * @return Generator<int, ClickHistoryRow>
+	 * Null on an error, unlike the list-returning methods, which answer with an
+	 * empty list: the statement is executed here, before the first row is asked
+	 * for, so the caller learns of a failure while it can still say so — once
+	 * the download headers are out, an empty file is all it could send, and a
+	 * user who trusts that as a backup and then clears the history has lost it.
+	 *
+	 * @return Generator<int, ClickHistoryRow>|null
 	 */
-	public function streamAll(bool $byCategory = false, ?string $status = null): Generator {
+	public function streamAll(bool $byCategory = false, ?string $status = null): ?Generator {
 		if (!$this->ensureTableExists()) {
-			return;
+			return null;
 		}
 		$columns = ClickHistorySchema::COLUMNS;
 		$where = ClickHistorySchema::statusClause($status);
@@ -188,9 +193,18 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			{$order}
 			SQL;
 		$stm = $this->run($sql, self::statusParam($status), 'export entries');
-		if ($stm === null) {
-			return;
-		}
+		return $stm === null ? null : self::rowsOf($stm);
+	}
+
+	/**
+	 * The rows of an executed statement, one at a time. Kept apart from
+	 * streamAll() because a generator function runs nothing until its first
+	 * iteration — the query has to be executed outside of it for a failure to be
+	 * reported up front.
+	 *
+	 * @return Generator<int, ClickHistoryRow>
+	 */
+	private static function rowsOf(PDOStatement $stm): Generator {
 		while (true) {
 			$row = $stm->fetch(PDO::FETCH_ASSOC);
 			if (!is_array($row)) {

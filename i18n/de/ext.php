@@ -52,6 +52,7 @@ return array(
 		'feedback' => array(
 			'not_saved' => 'Die Änderung konnte nicht gespeichert werden. Details stehen in den Protokollen von FreshRSS.',
 			'cleared' => 'Der gesamte Verlauf wurde gelöscht.',
+			'export_failed' => 'Der Export konnte nicht aus der Datenbank gelesen werden, es wurde nichts heruntergeladen. Details stehen in den Protokollen von FreshRSS.',
 		),
 		'conf' => array(
 			'where_help' => 'Der Verlauf ist eine eigene Seite und über das Kopfmenü (oben rechts, Zahnrad) erreichbar — oder direkt öffnen:',

@@ -20,6 +20,10 @@ existed in `metadata.json` during development but were never tagged or released.
   (`init_stream` in `p/scripts/main.js`), so on a phone almost every expand
   became a history entry. A click the core has cancelled is now ignored; a
   Ctrl/Cmd-click or middle-click, which does open the link, is still recorded.
+- An export whose query the database refused arrived as an empty file with
+  HTTP 200 — a `{"count": 0}` JSON or a CSV with only its header line, which
+  looks like a complete backup. The query now runs before any download header
+  goes out, and a failure leads back to the list with a notification instead.
 
 ## [0.7.0] - 2026-10-01
 

@@ -130,6 +130,15 @@ $tableExists = static fn(): bool => $pdo->query('SELECT 1 FROM `_click_history`'
  */
 $ids = static fn(array $rows): array => array_column($rows, 'id_entry');
 
+/**
+ * What the export view sees: every row of a stream, or nothing when the DAO
+ * reported the query as failed.
+ *
+ * @param Generator<int, array{id_entry:string}>|null $rows
+ * @return list<array{id_entry:string}>
+ */
+$streamed = static fn(?Generator $rows): array => $rows === null ? [] : iterator_to_array($rows, false);
+
 // MySQL and PostgreSQL keep their database between runs, so start from nothing
 // rather than from whatever the last run left behind.
 $prefixes = ['chtest_dao_a_', 'chtest_dao_b_', 'chtest_dao_legacy_', 'chtest_dao_fresh_', 'chtest_dao_figures_'];
@@ -214,11 +223,11 @@ $check(
 
 // The export walks the whole result set one row at a time. On MySQL that result is
 // unbuffered, so the connection is only free again once it has been read to the end.
-$check('the export streams the same rows the list shows', $ids(iterator_to_array($dao->streamAll(), false)) === $ids($all));
+$check('the export streams the same rows the list shows', $ids($streamed($dao->streamAll())) === $ids($all));
 $check('the connection takes the next query after the export', $dao->count() === 4);
 $check(
 	'the grouped, filtered export matches the grouped, filtered list',
-	iterator_to_array($dao->streamAll(true, ClickHistoryDAO::STATUS_GOOD), false) === $dao->listEntries(100, 0, true, ClickHistoryDAO::STATUS_GOOD)
+	$streamed($dao->streamAll(true, ClickHistoryDAO::STATUS_GOOD)) === $dao->listEntries(100, 0, true, ClickHistoryDAO::STATUS_GOOD)
 );
 
 $check('setting a status this version does not know', $dao->setStatus($e3, 'later'));
@@ -232,6 +241,10 @@ $check('clearing empties the table', $dao->clear() && $dao->count() === 0);
 $exec('DROP TABLE `_click_history`');
 $check('a refused write is reported as a failure', !$dao->setStatus($e1, ClickHistoryDAO::STATUS_GOOD) && !$dao->delete($e1));
 $check('a refused read comes back empty', $dao->listEntries(10, 0) === [] && $dao->count() === 0 && $dao->statsByFeed() === []);
+// The export is the one read that must not come back empty: the controller has
+// to know before the download headers go out, or the user gets an empty file
+// that looks like a complete backup.
+$check('a refused export is reported as a failure, not as an empty stream', $dao->streamAll() === null);
 
 // --- The per-feed figures ----------------------------------------------------
 // A second feed, so that the ordering has something to order; one of its rows

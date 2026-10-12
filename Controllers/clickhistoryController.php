@@ -160,13 +160,23 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 	 * systemConf()->extensions_enabled and so cannot see a user extension at all.
 	 */
 	public function exportAction(): void {
-		$this->view->_layout(null);
-
 		$format = Minz_Request::paramString('format') === 'csv' ? 'csv' : 'json';
+		// Executed here, before any header goes out: a query the database refuses
+		// is said out loud on the list, as the other failures are. Once the
+		// download headers are sent, an empty file would be the only answer left,
+		// and an empty file that looks like a complete backup is worse than none.
 		$rows = (new ClickHistoryDAO())->streamAll(
 			Minz_Request::paramString('group') === 'category',
 			self::requestedStatus(),
 		);
+		if ($rows === null) {
+			Minz_Request::bad(_t('ext.click_history.feedback.export_failed'), [
+				'c' => 'clickhistory', 'a' => 'index', 'params' => self::carriedParams(),
+			]);
+			return;
+		}
+
+		$this->view->_layout(null);
 		$filename = 'click-history-' . date('Y-m-d') . '.' . $format;
 
 		header('Content-Type: ' . ($format === 'csv' ? 'text/csv; charset=UTF-8' : 'application/json; charset=UTF-8'));
