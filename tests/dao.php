@@ -294,6 +294,13 @@ $check(
 	'count, grouped list and filter counts in a row on one connection',
 	$total === 2 && $ids($page) === [$e1, $e2] && $byStatus[ClickHistoryDAO::STATUS_UNRATED] === 2
 );
+// The export behind "group by category" has to come out in that order too. On
+// this fixture grouped order and date order differ, so an export that ignores
+// the grouping shows up here — the filtered check above has one row and cannot.
+$check(
+	'the grouped export is in grouped order, like the grouped list',
+	$ids($streamed($dao->streamAll(true))) === [$e1, $e2] && $ids($streamed($dao->streamAll(false))) === [$e2, $e1]
+);
 
 // --- An installation upgrading from the first version ------------------------
 // The table as the first release created it, with neither the category nor the
