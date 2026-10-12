@@ -13,6 +13,8 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-13
+
 ### Fixed
 
 - A plain click or tap on the headline of a collapsed list row was recorded as
@@ -43,6 +45,11 @@ existed in `metadata.json` during development but were never tagged or released.
 
 - The client's request path is covered by tests: what is posted, the opt-out,
   and every failure branch, with the browser's fetch and context injected.
+- The extension is now tested inside a real FreshRSS in CI (PHP 8.1 and 8.4):
+  the controller, its redirects and notifications, the JSON endpoint's status
+  codes and what an anonymous visitor is served. The history page is rendered
+  from hostile rows in a test, the schema and DAO also run on MariaDB 10.6, and
+  the core strings the views borrow are checked against core.
 
 ## [0.7.0] - 2026-10-01
 
@@ -184,7 +191,8 @@ existed in `metadata.json` during development but were never tagged or released.
 - A confirmation wording the core can never show was dropped rather than left in
   place looking as if it worked.
 
-[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/bmmmm/xExtension-ClickHistory/compare/v0.5.0...v0.5.1
