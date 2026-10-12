@@ -13,6 +13,14 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+### Fixed
+
+- A plain click or tap on the headline of a collapsed list row was recorded as
+  an opened article. Core cancels that click and only expands the article
+  (`init_stream` in `p/scripts/main.js`), so on a phone almost every expand
+  became a history entry. A click the core has cancelled is now ignored; a
+  Ctrl/Cmd-click or middle-click, which does open the link, is still recorded.
+
 ## [0.7.0] - 2026-10-01
 
 ### Added

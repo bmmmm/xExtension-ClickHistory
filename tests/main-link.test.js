@@ -236,6 +236,22 @@ test('a forged list-row headline inside the article body does not count', () => 
 	assert.equal(articleOfMainLink(clickOn(body.querySelector('a'))), null);
 });
 
+// --- A click the core has cancelled -------------------------------------------
+// Core's handler on #stream blocks the collapsed row's headline unless Ctrl or
+// Cmd is held, and expands the article instead (p/scripts/main.js, init_stream).
+// The event still bubbles up to the document, where this listener sits, with
+// defaultPrevented set — so that flag is the difference between "opened" and
+// "merely unfolded".
+
+test('a click the core has cancelled is not an opened article', () => {
+	const document = parse(NORMAL_VIEW);
+	const link = only(document, 'li.titleAuthorSummaryDate > a.title');
+	// Compared as booleans: on a failure assert would otherwise inspect() the
+	// linkedom element for its message, which never finishes.
+	assert.equal(articleOfMainLink({ target: link, defaultPrevented: true }) === null, true, 'cancelled');
+	assert.equal(articleOfMainLink({ target: link, defaultPrevented: false }) === null, false, 'not cancelled');
+});
+
 // --- Outside an article -------------------------------------------------------
 
 test('a link outside any .flux is not a main link', () => {

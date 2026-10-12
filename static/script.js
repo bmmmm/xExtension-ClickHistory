@@ -73,6 +73,16 @@
 	// main links. `.text` is checked as well: a feed controls the article body and
 	// could put a `go_website` class on a link of its own.
 	function articleOfMainLink(ev) {
+		// A click the core has cancelled opened nothing. Its handler on #stream
+		// runs before this one (it is closer to the target) and blocks the
+		// collapsed row's headline unless Ctrl or Cmd is held: a plain click or
+		// tap there only expands the article, through a synthetic click on the
+		// row (p/scripts/main.js, init_stream: onclick returns
+		// `ev.ctrlKey || ev.metaKey`, onmouseup calls parentElement.click()).
+		// Without this every expand on a phone was a history entry.
+		if (ev.defaultPrevented === true) {
+			return null;
+		}
 		const flux = ev.target.closest && ev.target.closest('.flux');
 		if (!flux) {
 			return null;
