@@ -209,6 +209,10 @@ php tests/dao.php
 # The CSV and JSON export, rendered and read back. Needs nothing but PHP.
 php tests/export.php
 
+# The history page, rendered from hostile rows (escaping, the http(s) guard on
+# links, the clear button). Needs the .freshrss-core checkout as well.
+php tests/index.php
+
 # Every language defines exactly the translation keys the code uses.
 php tests/i18n.php
 

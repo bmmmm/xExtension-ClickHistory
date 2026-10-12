@@ -182,6 +182,13 @@ jobs:
         if: ${{ !cancelled() }}
         run: php tests/dao.php
 
+      # The history page, rendered from hostile rows: escaping, the http(s)
+      # guard on links, and the clear button on a filtered page with no rows.
+      # Needs the core checkout for the classes the template reads.
+      - name: Check the history page
+        if: ${{ !cancelled() }}
+        run: php tests/index.php
+
       - name: Use Composer cache
         if: ${{ !cancelled() }}
         id: composer-cache
@@ -262,6 +269,10 @@ jobs:
       - name: Check the export files
         if: ${{ !cancelled() }}
         run: php tests/export.php
+
+      - name: Check the history page
+        if: ${{ !cancelled() }}
+        run: php tests/index.php
 
   # The extension writes three dialects of the same schema and the development
   # installation only ever runs one of them. SQLite is covered in the job above,
