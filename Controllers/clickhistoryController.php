@@ -139,8 +139,9 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		// under, so that both can travel in the same form.
 		$id = Minz_Request::paramString('id');
 		$rate = Minz_Request::paramString('rate');
-		$saved = !ctype_digit($id) || !in_array($rate, ClickHistoryDAO::STATUSES, true) ||
-			(new ClickHistoryDAO())->setStatus($id, $rate);
+		$saved = self::isEntryId($id) && in_array($rate, ClickHistoryDAO::STATUSES, true)
+			? (new ClickHistoryDAO())->setStatus($id, $rate)
+			: self::refused('rating');
 
 		$params = self::carriedParams();
 		// Back to the page the judgement was made on, unlike after a deletion. With
@@ -211,7 +212,7 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 		}
 
 		$id = Minz_Request::paramString('id');
-		if (!ctype_digit($id)) {
+		if (!self::isEntryId($id)) {
 			$this->fail(400, 'bad_id');
 			return;
 		}
@@ -259,7 +260,7 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			return;
 		}
 		$id = Minz_Request::paramString('id');
-		$saved = !ctype_digit($id) || (new ClickHistoryDAO())->delete($id);
+		$saved = self::isEntryId($id) ? (new ClickHistoryDAO())->delete($id) : self::refused('deletion');
 		// Back to the first page rather than to the page the deletion happened on:
 		// removing an entry shifts every later one forward, so the page number the
 		// form came from no longer points at what the user was looking at.
@@ -320,6 +321,28 @@ final class FreshExtension_clickhistory_Controller extends FreshRSS_ActionContro
 			'status' => self::requestedStatus(),
 			'group' => Minz_Request::paramString('group') === 'category' ? 'category' : null,
 		], static fn(?string $value): bool => $value !== null);
+	}
+
+	/**
+	 * An entry id as core stores it: a BIGINT, so digits only and no larger than
+	 * the biggest signed 64-bit number. Anything longer would only fail later, in
+	 * the database, as an out-of-range error instead of a refused request.
+	 */
+	private static function isEntryId(string $id): bool {
+		$max = (string)PHP_INT_MAX;
+		return ctype_digit($id) &&
+			(strlen($id) < strlen($max) || (strlen($id) === strlen($max) && strcmp($id, $max) <= 0));
+	}
+
+	/**
+	 * A form post with an id or a state no page of this extension sends. Reported
+	 * like a change the database refused rather than redirected as if it had
+	 * worked: the user pressed a button and nothing happened. The value itself is
+	 * not logged, since it is whatever the client chose to send.
+	 */
+	private static function refused(string $what): bool {
+		Minz_Log::warning("ClickHistory: refused a {$what} with an invalid entry id or state");
+		return false;
 	}
 
 	/**

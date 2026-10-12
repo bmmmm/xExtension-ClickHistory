@@ -20,6 +20,13 @@ existed in `metadata.json` during development but were never tagged or released.
   `pk_*`, `fbclid`, `gclid` and other click ids). The rest of the query and the
   fragment stay as the feed had them.
 
+### Fixed
+
+- A rating or deletion sent with an id or a state no page sends went back to
+  the list as if it had worked. It now says the change could not be saved, and
+  an id beyond the largest BIGINT is refused up front (a click with one is a
+  400) instead of failing in the database.
+
 ## [0.7.1] - 2026-10-13
 
 ### Fixed

@@ -20,8 +20,6 @@ From the review rounds of 2026-10-12/13; each one commit with a gate that can fa
 - **tableChecked key**: on SQLite `prefix()` is always `''`, so "per user" does
   not hold there; key on `Minz_User::name()` plus prefix.
 - **Upsert moving backwards**: `clicked_at = MAX(...)` / `GREATEST(...)`.
-- **Bad input reads as success** (`rateAction`, `deleteAction`): non-digit id or
-  unknown rate redirects silently; a 20+ digit id overflows BIGINT.
 - **Config saved twice** (`extension.php` `handleConfigureAction`), return value
   ignored; a missing `track_clicks` falls back to false, not the stored value.
 - **MySQL collation of `status`**: only if a symptom shows.

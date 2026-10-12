@@ -174,6 +174,19 @@ loc=$(redirect 'c=clickhistory&a=rate' --data "id=$id2&rate=good&status=unrated&
 check 'the redirect after a rating carries the filter and the grouping, not the page' \
 	"$(contains "$loc" 'status=unrated')$(contains "$loc" 'group=category')$(lacks "$loc" 'page=')"
 
+# 3b — a form post no page sends is refused out loud, not redirected as if it
+# had worked. 9223372036854775808 is one past BIGINT.
+check 'a rating with a non-numeric id says it was not saved' \
+	"$(contains "$(post 'c=clickhistory&a=rate' --data 'id=abc&rate=good' -L)" 'could not be saved')"
+check 'a rating with an unknown state says it was not saved' \
+	"$(contains "$(post 'c=clickhistory&a=rate' --data "id=$id1&rate=maybe" -L)" 'could not be saved')"
+check 'a deletion with an id past BIGINT says it was not saved' \
+	"$(contains "$(post 'c=clickhistory&a=delete' --data 'id=9223372036854775808' -L)" 'could not be saved')"
+check 'a click with an id past BIGINT is a 400' \
+	"$(contains "$(post 'c=clickhistory&a=record' --data 'id=9223372036854775808' -w ' %{http_code}')" '"bad_id"} 400')"
+check 'a click with the largest BIGINT is looked up, not refused' \
+	"$(contains "$(post 'c=clickhistory&a=record' --data 'id=9223372036854775807' -w ' %{http_code}')" '"unknown_entry"} 404')"
+
 # 4 — a deletion keeps both too, sent the way the page's own form sends it.
 page=$(get 'c=clickhistory&a=index&status=good&group=category')
 fields=$(form "$page" delete "$id2")
