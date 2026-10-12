@@ -300,23 +300,44 @@ jobs:
       matrix:
         include:
           - backend: mysql
+            php: '8.1'
             dsn: 'mysql:host=127.0.0.1;port=3306;dbname=clickhistory'
             user: root
             password: clickhistory
             extension: pdo_mysql
+          # PHP 8.4 moved the MySQL driver constants to Pdo\Mysql, and core picks
+          # one or the other by version (tests/dao.php does the same). Without
+          # this leg the 8.4 branch never runs against a server.
+          - backend: mysql
+            php: '8.4'
+            dsn: 'mysql:host=127.0.0.1;port=3306;dbname=clickhistory'
+            user: root
+            password: clickhistory
+            extension: pdo_mysql
+          # FreshRSS supports MariaDB alongside MySQL, and the two have drifted
+          # apart in exactly the DDL and upsert syntax the schema uses.
+          - backend: mariadb
+            php: '8.1'
+            dsn: 'mysql:host=127.0.0.1;port=3307;dbname=clickhistory'
+            user: root
+            password: clickhistory
+            extension: pdo_mysql
           - backend: pgsql
+            php: '8.1'
             dsn: 'pgsql:host=127.0.0.1;port=5432;dbname=clickhistory'
             user: postgres
             password: clickhistory
             extension: pdo_pgsql
-    # Both servers start for both legs: a service block cannot be selected by the
-    # matrix, and one idle container is cheaper than splitting this into two jobs
-    # that would then drift apart. The passwords are literals on purpose — these
+    # Every server starts for every leg: a service block cannot be selected by the
+    # matrix, and idle containers are cheaper than splitting this into jobs that
+    # would then drift apart. MySQL is pinned to what `mysql:8` resolved to on
+    # 2026-10-12: that tag follows whatever 8.x is current, and a server upgrade
+    # should be a diff here rather than a red run nobody changed anything for. The passwords are literals on purpose — these
     # containers exist for the length of one job and hold nothing but a table this
     # file's own test creates and drops.
     services:
       mysql:
-        image: mysql:8
+        image: mysql:8.4.11
         env:
           MYSQL_ROOT_PASSWORD: clickhistory
           MYSQL_DATABASE: clickhistory
@@ -326,6 +347,18 @@ jobs:
         # connection, so the job has to wait for the server rather than the socket.
         options: >-
           --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MARIADB_ROOT_PASSWORD: clickhistory
+          MARIADB_DATABASE: clickhistory
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
@@ -345,12 +378,12 @@ jobs:
       - name: Git checkout source code
         uses: actions/checkout@v7
 
-      # Same floor as the lint job, plus the driver for this leg. setup-php builds
-      # neither by default.
+      # The lint job's floor, or the ceiling for the leg that needs it, plus the
+      # driver for this leg. setup-php builds neither by default.
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: ${{ matrix.php }}
           extensions: ${{ matrix.extension }}
           coverage: none
 
