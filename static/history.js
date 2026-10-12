@@ -37,11 +37,15 @@
 		});
 	}
 
-	function init() {
-		document.addEventListener('click', function (ev) {
-			const button = ev.target instanceof Element ? ev.target.closest('.click-history-copy') : null;
+	// One listener for the whole page rather than one per button. The clipboard
+	// is looked up per click and passed in, like the timer, so that
+	// tests/history.test.js can run this against the page's real markup.
+	function listen(root, clipboardOf, schedule) {
+		root.addEventListener('click', function (ev) {
+			const target = ev.target;
+			const button = target && typeof target.closest === 'function' ? target.closest('.click-history-copy') : null;
 			if (button !== null) {
-				copyFromButton(button, navigator.clipboard, window.setTimeout.bind(window));
+				copyFromButton(button, clipboardOf(), schedule);
 			}
 		});
 	}
@@ -50,9 +54,12 @@
 	if (typeof document === 'undefined') {
 		module.exports = {
 			copyFromButton: copyFromButton,
+			listen: listen,
 		};
 		return;
 	}
 
-	init();
+	listen(document, function () {
+		return navigator.clipboard;
+	}, window.setTimeout.bind(window));
 })();

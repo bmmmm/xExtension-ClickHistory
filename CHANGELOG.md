@@ -13,6 +13,14 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Copy link** removed every parameter starting with `pk_`, a site's own
+  `pk_id` included. Only Matomo's campaign names (`pk_campaign`, `pk_kwd`,
+  `pk_source` and the rest) are removed now — `pk_vid`, Matomo's cross-domain
+  visitor id, is kept like any other parameter — and a removed parameter no longer
+  leaves an empty `&` pair behind (`?utm_source=x&&a=1` became `?&a=1`).
+
 ## [0.7.2] - 2026-10-13
 
 ### Added

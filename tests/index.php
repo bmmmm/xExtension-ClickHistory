@@ -180,6 +180,25 @@ foreach ([false, true] as $byCategory) {
 		substr_count($html, '<button type="button" class="btn click-history-copy"') === $webRows);
 }
 
+// The actions cell of one row, as tests/history.test.js runs the copy script
+// against it. Kept in a file so the JS tests need neither PHP nor core; held to
+// the template here, so the two cannot drift apart. After a deliberate change
+// to the cell: php tests/index.php --write-fixture
+$fixture = __DIR__ . '/fixtures/history-actions.html';
+preg_match(
+	'%<td class="click-history-actions">.*?</td>%s',
+	IndexView::render([IndexView::row('1760000000000007', 'Tracked', 'https://example.org/c?utm_source=feed&id=7#top')], $counts),
+	$cell
+);
+$cell = ($cell[0] ?? '') . "\n";
+if (in_array('--write-fixture', $argv, true)) {
+	file_put_contents($fixture, $cell);
+}
+$check(
+	'tests/fixtures/history-actions.html is what the template renders (after a deliberate change: --write-fixture)',
+	$cell !== "\n" && is_file($fixture) && file_get_contents($fixture) === $cell
+);
+
 $check('the pagination is a named landmark', str_contains(
 	IndexView::renderPagination(3, 2),
 	'<nav class="nav-pagination nav-list" aria-label="ext.click_history.landmark.pages">'
@@ -193,7 +212,14 @@ $cleanUrlCases = [
 	'the name in another case' => ['https://example.org/p?UTM_Source=x&id=5', 'https://example.org/p?id=5'],
 	'the name percent-encoded' => ['https://example.org/p?%75tm_source=x&id=5', 'https://example.org/p?id=5'],
 	'a click id at the end' => ['https://example.org/p?id=5&fbclid=abc', 'https://example.org/p?id=5'],
-	'Matomo and Piwik prefixes' => ['https://example.org/p?mtm_campaign=a&pk_kwd=b&id=5', 'https://example.org/p?id=5'],
+	'the mtm_ prefix and Matomo\'s older campaign names' => [
+		'https://example.org/p?mtm_campaign=a&pk_campaign=1&pk_cpn=2&pk_kwd=3&pk_keyword=4&pk_source=5&pk_medium=6'
+			. '&pk_content=7&pk_cid=8&pk_group=9&pk_placement=10&id=5',
+		'https://example.org/p?id=5',
+	],
+	'a site\'s own pk_ parameter stays' => ['https://example.org/p?pk_id=5&pk_campaign=x', 'https://example.org/p?pk_id=5'],
+	'no empty pair left where one was removed' => ['https://example.org/p?utm_source=x&&a=1', 'https://example.org/p?a=1'],
+	'no trailing & left either' => ['https://example.org/p?a=1&utm_source=x&', 'https://example.org/p?a=1'],
 	'a parameter without a value' => ['https://example.org/p?gclid&id=5', 'https://example.org/p?id=5'],
 	'nothing to remove: unchanged, empty pairs and all' => ['https://example.org/p?a=1&&b=2', 'https://example.org/p?a=1&&b=2'],
 	'nothing to remove: a trailing ? stays' => ['https://example.org/p?', 'https://example.org/p?'],

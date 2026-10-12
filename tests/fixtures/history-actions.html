@@ -1,0 +1,25 @@
+<td class="click-history-actions">
+																							<button type="button" class="btn click-history-copy"
+									data-url="https://example.org/c?id=7#top"
+									data-copied="ext.click_history.action.copied"
+									data-failed="ext.click_history.action.copy_failed">ext.click_history.action.copy_link</button>
+														<form method="post" action="./?c=clickhistory&amp;a=rate">
+								<input type="hidden" name="_csrf" value="token" />
+								<input type="hidden" name="id" value="1760000000000007" />
+																		<button type="submit" name="rate"
+											value="good"
+											class="btn"
+											aria-pressed="false"
+											title="ext.click_history.rate.good">ext.click_history.status.good</button>
+																				<button type="submit" name="rate"
+											value="dropped"
+											class="btn"
+											aria-pressed="false"
+											title="ext.click_history.rate.dropped">ext.click_history.status.dropped</button>
+																	</form>
+							<form method="post" action="./?c=clickhistory&amp;a=delete">
+								<input type="hidden" name="_csrf" value="token" />
+								<input type="hidden" name="id" value="1760000000000007" />
+																<button type="submit" class="btn btn-attention confirm">ext.click_history.action.delete</button>
+							</form>
+						</td>

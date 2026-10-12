@@ -19,10 +19,14 @@ final class ClickHistoryExtension extends Minz_Extension {
 	 * id or the search term on the next, and a copied link that no longer
 	 * opens the article is worse than one with a campaign tag left in it.
 	 */
-	private const TRACKING_PREFIXES = ['utm_', 'mtm_', 'pk_'];
+	private const TRACKING_PREFIXES = ['utm_', 'mtm_'];
 	private const TRACKING_PARAMS = [
 		'fbclid', 'gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid', 'yclid', 'igshid', 'twclid', 'ttclid',
 		'mc_cid', 'mc_eid', '_hsenc', '_hsmi', 'mkt_tok', 'oly_anon_id', 'oly_enc_id', 'vero_id',
+		// Matomo's older campaign names, spelled out: as a prefix `pk_` would also
+		// take a site's own `pk_id` with it.
+		'pk_campaign', 'pk_cpn', 'pk_kwd', 'pk_keyword', 'pk_source', 'pk_medium', 'pk_content', 'pk_cid',
+		'pk_group', 'pk_placement',
 	];
 
 	private static ?self $instance = null;
@@ -245,7 +249,9 @@ final class ClickHistoryExtension extends Minz_Extension {
 	 * is why the query is cut up as a string: parse_str() and
 	 * http_build_query() would re-encode values, turn dots in names into
 	 * underscores and reorder arrays. A link without anything to remove comes
-	 * back unchanged, down to a trailing `?`.
+	 * back unchanged, down to a trailing `?` or an empty `&&` pair; once
+	 * something is removed, the empty pairs go too, so a removed parameter
+	 * leaves no `?&` or trailing `&` behind.
 	 */
 	public static function cleanUrl(string $url): string {
 		$hash = strpos($url, '#');
@@ -256,11 +262,11 @@ final class ClickHistoryExtension extends Minz_Extension {
 			return $url;
 		}
 		$pairs = explode('&', substr($rest, $question + 1));
-		$kept = array_filter($pairs, static fn(string $pair): bool => !self::isTrackingParam($pair));
-		if (count($kept) === count($pairs)) {
+		$untracked = array_filter($pairs, static fn(string $pair): bool => !self::isTrackingParam($pair));
+		if (count($untracked) === count($pairs)) {
 			return $url;
 		}
-		$query = implode('&', $kept);
+		$query = implode('&', array_filter($untracked, static fn(string $pair): bool => $pair !== ''));
 		return substr($rest, 0, $question) . ($query === '' ? '' : '?' . $query) . $fragment;
 	}
 
