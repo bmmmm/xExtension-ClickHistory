@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { shouldHandleGoWebsite, createOncePerLoadGuard } = require('../static/script.js');
+const { shouldHandleGoWebsite, createOncePerLoadGuard, createRecorder } = require('../static/script.js');
 
 // Enough of a KeyboardEvent for the guards: they read the modifier flags, the
 // key, and whether the focus sits in a form field.
@@ -116,4 +116,107 @@ test('two guards do not share what they have seen', () => {
 	const second = createOncePerLoadGuard();
 	first('1700000000000001');
 	assert.equal(second('1700000000000001'), true);
+});
+
+// A request that did not get through is forgotten again, so the next click on
+// the same article is tried rather than dropped.
+test('a released id passes again', () => {
+	const guard = createOncePerLoadGuard();
+	guard('1700000000000001');
+	guard.release('1700000000000001');
+	assert.equal(guard('1700000000000001'), true);
+	assert.equal(guard('1700000000000001'), false);
+});
+
+// --- The recorder ------------------------------------------------------------
+// What goes over the wire, and what happens when the answer is not a 200. The
+// server-side upsert and the auth gate are core's; this is only the client half.
+
+const ENTRY_ID = '1700000000000001';
+const FLUX = { getAttribute: (name) => (name === 'data-entry' ? ENTRY_ID : null) };
+
+// A recorder with every dependency replaced: `calls` collects what fetch was
+// asked, `errors` what was logged, `answer` is what fetch resolves to (or, as an
+// Error, rejects with).
+function recorder(overrides) {
+	const calls = [];
+	const errors = [];
+	const deps = Object.assign({
+		vars: () => ({ track_clicks: true, record_url: './?c=clickhistory&a=record' }),
+		csrf: () => 'token-123',
+		fetch: (url, options) => {
+			calls.push({ url, options });
+			const answer = deps.answer;
+			return answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer);
+		},
+		guard: createOncePerLoadGuard(),
+		error: (message) => errors.push(message),
+		answer: { ok: true, status: 200, redirected: false },
+	}, overrides || {});
+	return { record: createRecorder(deps), calls, errors, deps };
+}
+
+test('a click posts the entry id and the CSRF token as JSON', async () => {
+	const { record, calls, errors } = recorder();
+	await record(FLUX);
+	assert.equal(calls.length, 1);
+	assert.equal(calls[0].url, './?c=clickhistory&a=record');
+	assert.equal(calls[0].options.method, 'POST');
+	assert.equal(calls[0].options.credentials, 'same-origin');
+	assert.equal(calls[0].options.keepalive, true);
+	assert.equal(calls[0].options.headers['Content-Type'], 'application/json; charset=utf-8');
+	// Core merges a JSON body into $_POST before its CSRF check, so the token has
+	// to be in there — and the id travels as a string, past 2^53.
+	assert.deepEqual(JSON.parse(calls[0].options.body), { ajax: true, _csrf: 'token-123', id: ENTRY_ID });
+	assert.deepEqual(errors, []);
+});
+
+test('nothing is posted while recording is switched off', async () => {
+	const { record, calls } = recorder({ vars: () => ({ track_clicks: false, record_url: './?c=clickhistory&a=record' }) });
+	assert.equal(await record(FLUX), undefined);
+	assert.equal(calls.length, 0);
+});
+
+test('nothing is posted before the context has arrived', async () => {
+	const { record, calls } = recorder({ vars: () => ({}) });
+	assert.equal(await record(FLUX), undefined);
+	assert.equal(calls.length, 0);
+});
+
+test('a recorded article is not posted again in the same page load', async () => {
+	const { record, calls } = recorder();
+	await record(FLUX);
+	await record(FLUX);
+	assert.equal(calls.length, 1);
+});
+
+// fetch() resolves on a 403 or a 500 just as it does on a 200, so the status has
+// to be read — and a click the server refused may be tried again.
+test('an HTTP error is logged and the article may be posted again', async () => {
+	const { record, calls, errors } = recorder({ answer: { ok: false, status: 403, redirected: false } });
+	await record(FLUX);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /1700000000000001 .*HTTP 403/);
+	await record(FLUX);
+	assert.equal(calls.length, 2);
+});
+
+// fetch() follows a redirect, and the login page it lands on answers 200: an
+// expired session looks like success unless the redirect itself is noticed.
+test('a redirect is a failure, whatever the final status says', async () => {
+	const { record, calls, errors } = recorder({ answer: { ok: true, status: 200, redirected: true } });
+	await record(FLUX);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /after a redirect/);
+	await record(FLUX);
+	assert.equal(calls.length, 2);
+});
+
+test('a request that never completed is logged and the article may be posted again', async () => {
+	const failure = new Error('network down');
+	const { record, calls, errors } = recorder({ answer: failure });
+	await record(FLUX);
+	assert.deepEqual(errors, [failure]);
+	await record(FLUX);
+	assert.equal(calls.length, 2);
 });

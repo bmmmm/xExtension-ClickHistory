@@ -31,6 +31,16 @@ existed in `metadata.json` during development but were never tagged or released.
   for anonymous visitors as well, and every click they made was a POST that
   the controller refused with a 403 and a console error. The script is now
   only added for a logged-in user.
+- A click whose request did not get through — the network was down, the
+  session had expired — could not be tried again in the same page load: the
+  once-per-load guard kept the id although nothing had been recorded. The id
+  is released on any failure now, and a redirect (fetch follows it to the login
+  page, which answers 200) counts as one too.
+
+### Changed
+
+- The client's request path is covered by tests: what is posted, the opt-out,
+  and every failure branch, with the browser's fetch and context injected.
 
 ## [0.7.0] - 2026-10-01
 

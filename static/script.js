@@ -34,7 +34,7 @@
 	// sessions this cannot see anything — so this is only here to save requests.
 	function createOncePerLoadGuard() {
 		const sent = new Set();
-		return function (entryId) {
+		function claim(entryId) {
 			if (entryId === '' || sent.has(entryId)) {
 				return false;
 			}
@@ -42,7 +42,14 @@
 			// same tick would otherwise both pass.
 			sent.add(entryId);
 			return true;
+		}
+		// For a request that did not get through — the network was down, the
+		// session had expired. Without this the next click on the same article in
+		// the same page load would be dropped without even trying.
+		claim.release = function (entryId) {
+			sent.delete(entryId);
 		};
+		return claim;
 	}
 
 	// The core's `go_website` shortcut calls window.open() directly and fires no
@@ -98,49 +105,73 @@
 		return flux;
 	}
 
-	function record(flux, guard) {
-		// Read at click time rather than at startup: the script is loaded
-		// asynchronously, so at startup the global context may not have arrived
-		// yet and the setting would fall back to the wrong value.
-		const vars = extensionVars();
-		if (vars.track_clicks === false || !vars.record_url) {
-			return;
-		}
-		const entryId = flux.getAttribute('data-entry') || '';
-		if (!guard(entryId)) {
-			return;
-		}
-
-		// The same shape the core posts for mark_favorite(): FreshRSS merges a
-		// JSON body into $_POST before the CSRF check runs, so the token has to
-		// travel inside it. keepalive covers the moment the tab is closed right
-		// after the click — the links open in a new tab, so this is a corner case
-		// rather than the rule.
-		fetch(vars.record_url, {
-			method: 'POST',
-			credentials: 'same-origin',
-			keepalive: true,
-			headers: { 'Content-Type': 'application/json; charset=utf-8' },
-			body: JSON.stringify({
-				ajax: true,
-				_csrf: (window.context && window.context.csrf) || '',
-				id: entryId,
-			}),
-		}).then(function (response) {
-			// fetch() only rejects when the request never completed, so without this
-			// a 400, a 404, a 500 or a redirect to the login page all look exactly
-			// like a recorded click — the one failure mode this extension has, and
-			// the console would say nothing about it.
-			if (!response.ok) {
-				console.error('Click history: recording entry ' + entryId + ' failed with HTTP ' + response.status);
+	// The function that posts one article. Everything it touches outside of its
+	// arguments comes in through `deps`, so that it can run under the test runner
+	// without a window: `vars()` is extensionVars(), `csrf()` the token, `fetch`
+	// the browser's, `guard` a createOncePerLoadGuard(), `error` console.error.
+	function createRecorder(deps) {
+		return function record(flux) {
+			// Read at click time rather than at startup: the script is loaded
+			// asynchronously, so at startup the global context may not have arrived
+			// yet and the setting would fall back to the wrong value.
+			const vars = deps.vars();
+			if (vars.track_clicks === false || !vars.record_url) {
+				return undefined;
 			}
-		}).catch(console.error);
-		// Errors stay in the console on purpose. A passive history must never
-		// interrupt what the user was actually doing.
+			const entryId = flux.getAttribute('data-entry') || '';
+			if (!deps.guard(entryId)) {
+				return undefined;
+			}
+
+			// The same shape the core posts for mark_favorite(): FreshRSS merges a
+			// JSON body into $_POST before the CSRF check runs, so the token has to
+			// travel inside it. keepalive covers the moment the tab is closed right
+			// after the click — the links open in a new tab, so this is a corner case
+			// rather than the rule.
+			//
+			// Returned so that a test can wait for the answer; the listeners ignore it.
+			return deps.fetch(vars.record_url, {
+				method: 'POST',
+				credentials: 'same-origin',
+				keepalive: true,
+				headers: { 'Content-Type': 'application/json; charset=utf-8' },
+				body: JSON.stringify({
+					ajax: true,
+					_csrf: deps.csrf(),
+					id: entryId,
+				}),
+			}).then(function (response) {
+				// fetch() only rejects when the request never completed, so without
+				// this a 400, a 404 or a 500 looks exactly like a recorded click — the
+				// one failure mode this extension has, and the console would say
+				// nothing about it. A redirect is followed and answers 200: the login
+				// page, after the session has expired. Nothing was recorded then either.
+				if (!response.ok || response.redirected) {
+					deps.guard.release(entryId);
+					deps.error('Click history: recording entry ' + entryId + ' failed with HTTP ' +
+						response.status + (response.redirected ? ' after a redirect' : ''));
+				}
+			}).catch(function (reason) {
+				deps.guard.release(entryId);
+				deps.error(reason);
+			});
+			// Errors stay in the console on purpose. A passive history must never
+			// interrupt what the user was actually doing.
+		};
 	}
 
 	function init() {
-		const guard = createOncePerLoadGuard();
+		const record = createRecorder({
+			vars: extensionVars,
+			csrf: function () {
+				return (window.context && window.context.csrf) || '';
+			},
+			fetch: function (url, options) {
+				return fetch(url, options);
+			},
+			guard: createOncePerLoadGuard(),
+			error: console.error,
+		});
 
 		// One delegated listener rather than a MutationObserver: articles loaded
 		// later need no preparation, since nothing is injected into them.
@@ -151,14 +182,14 @@
 		document.addEventListener('click', function (ev) {
 			const flux = articleOfMainLink(ev);
 			if (flux !== null) {
-				record(flux, guard);
+				record(flux);
 			}
 		});
 		document.addEventListener('auxclick', function (ev) {
 			if (ev.button === 1) {
 				const flux = articleOfMainLink(ev);
 				if (flux !== null) {
-					record(flux, guard);
+					record(flux);
 				}
 			}
 		});
@@ -174,7 +205,7 @@
 			if (link !== null) {
 				const flux = link.closest('.flux');
 				if (flux !== null) {
-					record(flux, guard);
+					record(flux);
 				}
 			}
 		});
@@ -190,6 +221,7 @@
 			MAIN_LINK_SELECTOR: MAIN_LINK_SELECTOR,
 			articleOfMainLink: articleOfMainLink,
 			createOncePerLoadGuard: createOncePerLoadGuard,
+			createRecorder: createRecorder,
 			shouldHandleGoWebsite: shouldHandleGoWebsite,
 		};
 		return;
