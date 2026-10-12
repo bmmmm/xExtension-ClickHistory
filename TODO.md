@@ -21,5 +21,3 @@ From the review rounds of 2026-10-12/13; each one commit with a gate that can fa
 - **Frontend**: `style.css` `min-width: 840px` vs core's breakpoint (841px);
   four `<nav>` without `aria-label`; README: context menu, long press and drag
   open links without a click event and are not recorded.
-- **CI**: `mariadb:10.6` and `postgres:16` float within their series (MySQL is
-  pinned), and MariaDB 10.6 is past its end of life — move to a supported LTS.

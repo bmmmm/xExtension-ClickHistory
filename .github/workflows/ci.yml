@@ -365,9 +365,13 @@ jobs:
             extension: pdo_pgsql
     # Every server starts for every leg: a service block cannot be selected by the
     # matrix, and idle containers are cheaper than splitting this into jobs that
-    # would then drift apart. MySQL is pinned to what `mysql:8` resolved to on
-    # 2026-10-12: that tag follows whatever 8.x is current, and a server upgrade
-    # should be a diff here rather than a red run nobody changed anything for.
+    # would then drift apart. Every image is pinned to an exact release — MySQL
+    # to what `mysql:8` resolved to on 2026-10-12, MariaDB and PostgreSQL to what
+    # `mariadb:10.11` and `postgres:16` resolved to on 2026-10-13: those tags
+    # follow whatever patch is current, and a server upgrade should be a diff
+    # here rather than a red run nobody changed anything for. MariaDB is the
+    # oldest LTS still supported (10.6 reached its end of life in July 2026):
+    # the oldest one is where syntax only newer releases accept shows up.
     # The passwords are literals on purpose — these containers exist for the
     # length of one job and hold nothing but a table this file's own test creates
     # and drops.
@@ -387,7 +391,7 @@ jobs:
           --health-timeout=5s
           --health-retries=20
       mariadb:
-        image: mariadb:10.6
+        image: mariadb:10.11.19
         env:
           MARIADB_ROOT_PASSWORD: clickhistory
           MARIADB_DATABASE: clickhistory
@@ -399,7 +403,7 @@ jobs:
           --health-timeout=5s
           --health-retries=20
       postgres:
-        image: postgres:16
+        image: postgres:16.15
         env:
           POSTGRES_PASSWORD: clickhistory
           POSTGRES_DB: clickhistory

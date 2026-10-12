@@ -131,8 +131,8 @@ there would mean one accidental click destroys the whole archive. Use the
 | Backend | Status |
 |---|---|
 | SQLite | Verified end to end |
-| MySQL / MariaDB | Schema, upsert and DAO executed in CI against `mysql:8.4.11` (PHP 8.1 and 8.4) and `mariadb:10.6`; not run inside a FreshRSS installation |
-| PostgreSQL | Schema, upsert and DAO executed in CI against `postgres:16`; not run inside a FreshRSS installation |
+| MySQL / MariaDB | Schema, upsert and DAO executed in CI against `mysql:8.4.11` (PHP 8.1 and 8.4) and `mariadb:10.11.19`; not run inside a FreshRSS installation |
+| PostgreSQL | Schema, upsert and DAO executed in CI against `postgres:16.15`; not run inside a FreshRSS installation |
 
 CI runs `tests/schema.php` against all three: it executes the extension's real
 CREATE TABLE, ALTER TABLE and upsert statements — the same strings the running
@@ -199,7 +199,7 @@ The page itself needs no markup of core's: it is reached through the
 pnpm test
 
 # Schema upgrade and upsert, against a real database (in-memory SQLite by
-# default). CI additionally runs this against mysql:8.4.11, mariadb:10.6 and postgres:16:
+# default). CI additionally runs this against mysql:8.4.11, mariadb:10.11.19 and postgres:16.15:
 #   CLICKHISTORY_TEST_DSN='mysql:host=127.0.0.1;dbname=clickhistory' \
 #     CLICKHISTORY_TEST_USER=root CLICKHISTORY_TEST_PASSWORD=… php tests/schema.php
 php tests/schema.php

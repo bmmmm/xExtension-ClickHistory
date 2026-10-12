@@ -20,6 +20,11 @@ existed in `metadata.json` during development but were never tagged or released.
   `pk_*`, `fbclid`, `gclid` and other click ids). The rest of the query and the
   fragment stay as the feed had them.
 
+### Changed
+
+- CI runs the MariaDB leg on 10.11.19 instead of 10.6, which is past its end of
+  life, and pins PostgreSQL to 16.15 instead of following `16`.
+
 ### Fixed
 
 - A rating or deletion sent with an id or a state no page sends went back to
