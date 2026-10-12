@@ -213,7 +213,8 @@ php tests/export.php
 # links, the clear button). Needs the .freshrss-core checkout as well.
 php tests/index.php
 
-# Every language defines exactly the translation keys the code uses.
+# Every language defines exactly the translation keys the code uses, and core
+# (.freshrss-core) defines the ones the views borrow from it.
 php tests/i18n.php
 
 # JavaScript style (ESLint, aligned with FreshRSS core's own eslint.config.js)

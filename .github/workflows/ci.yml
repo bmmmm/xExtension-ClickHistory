@@ -117,11 +117,6 @@ jobs:
           node --version
           find static -name '*.js' -print0 | xargs -0 -n1 node --check
 
-      # Every language defines exactly the keys the code uses — see the file.
-      - name: Check the translations match the keys the extension uses
-        if: ${{ !cancelled() }}
-        run: php tests/i18n.php
-
       # Everything above needs nothing but the runner — including the PHP checks,
       # which is the point of the ordering: a toolchain the steps below pull over
       # the network cannot take them down with it.
@@ -189,6 +184,12 @@ jobs:
       - name: Check the history page
         if: ${{ !cancelled() }}
         run: php tests/index.php
+
+      # Every language defines exactly the keys the code uses, and core defines
+      # the ones borrowed from it — hence below the core checkout. See the file.
+      - name: Check the translations match the keys the extension uses
+        if: ${{ !cancelled() }}
+        run: php tests/i18n.php
 
       - name: Use Composer cache
         if: ${{ !cancelled() }}

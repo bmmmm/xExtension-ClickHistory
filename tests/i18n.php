@@ -7,6 +7,11 @@ declare(strict_types=1);
 // rather than a bug — and a key nothing uses any more, or that only one language
 // has, is a translation that has drifted from the code.
 //
+// The views also borrow a few of core's own strings (gen.action.*, the log
+// pagination). Those are looked up in core's English file, so a key core renames
+// or drops fails here instead of showing up as a raw key on the page. Needs
+// FreshRSS core in .freshrss-core, the same checkout PHPStan uses.
+//
 //   php tests/i18n.php
 
 require_once __DIR__ . '/bootstrap.php';
@@ -72,6 +77,33 @@ foreach ($languages as $file) {
 	if ($missing === [] && $unused === []) {
 		echo "ok   {$name}\n";
 	} else {
+		$failures++;
+	}
+}
+
+// --- Core's strings -------------------------------------------------------------
+
+$coreI18n = $root . '/.freshrss-core/app/i18n/en';
+if (!is_dir($coreI18n)) {
+	fwrite(STDERR, "FreshRSS core is missing: git clone --depth 1 --branch 1.29.0 https://github.com/FreshRSS/FreshRSS .freshrss-core\n");
+	exit(1);
+}
+preg_match_all('/_t\(.((?!ext\.)[a-z]+)\.([a-zA-Z0-9_.]+)./', $source, $matches, PREG_SET_ORDER);
+$coreKeys = [];
+foreach ($matches as $match) {
+	$coreKeys[$match[1] . '.' . $match[2]] = [$match[1], $match[2]];
+}
+ksort($coreKeys);
+if (count($coreKeys) < 5) {
+	fwrite(STDERR, 'only ' . count($coreKeys) . " core keys found - did the pattern stop matching?\n");
+	exit(1);
+}
+$coreFiles = [];
+foreach ($coreKeys as $key => [$file, $path]) {
+	$coreFiles[$file] ??= is_file("{$coreI18n}/{$file}.php") ? require "{$coreI18n}/{$file}.php" : [];
+	$defined = is_array($coreFiles[$file]) && in_array($path, clickHistoryFlatKeys($coreFiles[$file]), true);
+	echo $defined ? 'ok   ' : 'FAIL ', "core defines {$key}\n";
+	if (!$defined) {
 		$failures++;
 	}
 }
