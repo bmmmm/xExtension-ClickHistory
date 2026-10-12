@@ -84,6 +84,7 @@ final class IndexView {
 	public ?string $status = null;
 	public bool $byCategory = false;
 	public int $currentPage = 1;
+	public int $nbPage = 1;
 
 	/** @return array<string, string> */
 	public function carriedParams(): array {
@@ -102,6 +103,18 @@ final class IndexView {
 			'id_entry' => $id, 'url' => $url, 'title' => $title, 'feed_name' => $feed, 'id_feed' => 1,
 			'category_name' => $category, 'id_category' => null, 'clicked_at' => 200, 'first_clicked_at' => 100, 'status' => 'unrated',
 		];
+	}
+
+	/** The pagination helper, which render() leaves out like the other helpers. */
+	public static function renderPagination(int $nbPage, int $currentPage): string {
+		$view = new self();
+		$view->nbPage = $nbPage;
+		$view->currentPage = $currentPage;
+		ob_start();
+		(function (): void {
+			include __DIR__ . '/../views/helpers/clickhistory/pagination.phtml';
+		})->call($view);
+		return (string)ob_get_clean();
 	}
 
 	/**
@@ -166,6 +179,11 @@ foreach ([false, true] as $byCategory) {
 	$check("the copy button never submits a form{$mode}",
 		substr_count($html, '<button type="button" class="btn click-history-copy"') === $webRows);
 }
+
+$check('the pagination is a named landmark', str_contains(
+	IndexView::renderPagination(3, 2),
+	'<nav class="nav-pagination nav-list" aria-label="ext.click_history.landmark.pages">'
+));
 
 // What the copy button copies.
 $cleanUrlCases = [

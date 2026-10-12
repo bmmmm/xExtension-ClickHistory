@@ -46,6 +46,11 @@ existed in `metadata.json` during development but were never tagged or released.
   now counts as added, and an upgrade interrupted between two columns resumes.
 - On SQLite, one process serving several users (a CLI run over every account)
   took the first user's table as proof that the others existed.
+- At exactly 840px wide, the action buttons were held on one line while core's
+  theme had already switched to its narrow layout. The breakpoint is now 841px,
+  matching core's `max-width: 840px`.
+- The history page's navigation bars (reading views, rating filter, pages)
+  carry an `aria-label`, so a screen reader's landmark list tells them apart.
 - On PostgreSQL, a newly created table's index gets a name that fits in 63
   bytes with the longest user name; the old name was cut. Existing tables
   keep their index.

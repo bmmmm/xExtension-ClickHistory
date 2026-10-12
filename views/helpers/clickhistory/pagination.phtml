@@ -11,6 +11,9 @@
 	// The grouping and the filter travel with the page number, or paging would
 	// silently drop back to the chronological order — or to the whole archive —
 	// halfway through.
+	//
+	// The page has up to four <nav> landmarks — this one twice, above and below
+	// the table — so each carries a name for a screen reader's landmark list.
 	$carried = $this->carriedParams();
 	$pageUrl = static fn(int $page): string => Minz_Url::display([
 		'c' => 'clickhistory',
@@ -19,7 +22,7 @@
 	]);
 ?>
 <?php if ($this->nbPage > 1) { ?>
-<nav class="nav-pagination nav-list">
+<nav class="nav-pagination nav-list" aria-label="<?= htmlspecialchars(_t('ext.click_history.landmark.pages'), ENT_COMPAT, 'UTF-8') ?>">
 	<div class="pagination-wrapper">
 		<ul class="pagination">
 			<li class="item pager-first">

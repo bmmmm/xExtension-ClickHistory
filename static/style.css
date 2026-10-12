@@ -29,9 +29,10 @@
    rating ones wrap and every row grows by a third. Keeping them on one line
    costs the column 60px, which it takes from the title — worth it while the
    title still has room, which is why this stops at the width core's own theme
-   breaks at. Below it the trade reverses: measured at 700px the title drops to
-   103px and wraps more than the buttons ever did. */
-@media (min-width: 840px) {
+   breaks at — `max-width: 840px` there, so 841px here, or both layouts would
+   apply at exactly 840. Below it the trade reverses: measured at 700px the
+   title drops to 103px and wraps more than the buttons ever did. */
+@media (min-width: 841px) {
 	.click-history-actions {
 		white-space: nowrap;
 	}

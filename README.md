@@ -20,7 +20,10 @@ This extension records that one gesture and nothing else.
   an expanded article, the link icon in the footer, and the headline in the
   collapsed list when it actually opens the link (Ctrl/Cmd-click or
   middle-click; a plain click or tap there only expands the article and is not
-  recorded) — plus the core's <kbd>go to website</kbd> shortcut.
+  recorded) — plus the core's <kbd>go to website</kbd> shortcut. A link opened
+  through the browser's context menu ("Open in new tab"), a long press on a
+  phone, or by dragging it to the tab bar fires no click event the page can
+  see, and is not recorded.
 * Shows the collection under **Click history**: headline, feed, category, when
   it was last opened, one page at a time.
 * **Copy link** on each row copies the article's address without its tracking

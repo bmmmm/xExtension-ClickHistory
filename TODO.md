@@ -18,6 +18,3 @@
 From the review rounds of 2026-10-12/13; each one commit with a gate that can fail.
 
 - **MySQL collation of `status`**: only if a symptom shows.
-- **Frontend**: `style.css` `min-width: 840px` vs core's breakpoint (841px);
-  four `<nav>` without `aria-label`; README: context menu, long press and drag
-  open links without a click event and are not recorded.

@@ -19,7 +19,7 @@
 	// expecting the stream context, which is exactly what is missing here.
 	$readingModes = FreshRSS_ReadingMode::getReadingModes();
 ?>
-<nav class="nav_menu">
+<nav class="nav_menu" aria-label="<?= htmlspecialchars(_t('ext.click_history.landmark.views'), ENT_COMPAT, 'UTF-8') ?>">
 	<div id="nav_menu_views" class="group">
 		<?php foreach ($readingModes as $mode) {
 			// getReadingModes() merges the current request into its targets, so from

@@ -24,7 +24,7 @@
 	// different filter has a different number of pages.
 	$groupParams = $this->byCategory ? ['group' => 'category'] : [];
 ?>
-<nav class="click-history-filters">
+<nav class="click-history-filters" aria-label="<?= htmlspecialchars(_t('ext.click_history.landmark.filters'), ENT_COMPAT, 'UTF-8') ?>">
 	<?php foreach ($filters as [$status, $label]) {
 		$active = $this->status === $status;
 		$params = $status === null ? $groupParams : $groupParams + ['status' => $status];

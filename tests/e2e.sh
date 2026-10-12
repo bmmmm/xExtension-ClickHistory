@@ -156,6 +156,8 @@ id2=1760000000000002
 # 1 — the page, through core's dispatcher and auth.
 page=$(get 'c=clickhistory&a=index')
 check 'the history page answers' "$(contains "$page" '<h1>Click history</h1>')"
+check 'the bar and the filters are named landmarks' \
+	"$(contains "$page" '<nav class="nav_menu" aria-label="Reading views">')$(contains "$page" '<nav class="click-history-filters" aria-label="Filter by rating">')"
 csrf=$(printf '%s' "$page" | sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' | head -n 1)
 [ -n "$csrf" ] || { echo 'no CSRF token on the page'; exit 1; }
 

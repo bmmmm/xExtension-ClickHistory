@@ -29,6 +29,11 @@ return array(
 			'dropped' => 'Diesen Artikel als nicht lesenswert markieren',
 			'undo' => 'Zurück auf unbewertet',
 		),
+		'landmark' => array(
+			'views' => 'Leseansichten',
+			'filters' => 'Nach Bewertung filtern',
+			'pages' => 'Seiten',
+		),
 		'filter' => array(
 			'all' => 'Alle',
 		),

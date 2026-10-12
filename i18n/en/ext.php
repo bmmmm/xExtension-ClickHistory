@@ -29,6 +29,11 @@ return array(
 			'dropped' => 'Mark this article as not worth reading',
 			'undo' => 'Back to unrated',
 		),
+		'landmark' => array(
+			'views' => 'Reading views',
+			'filters' => 'Filter by rating',
+			'pages' => 'Pages',
+		),
 		'filter' => array(
 			'all' => 'All',
 		),
