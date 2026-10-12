@@ -184,7 +184,15 @@
 		</div>
 
 		<?php $this->renderHelper('clickhistory/pagination'); ?>
+	<?php } ?>
 
+	<?php
+		// Outside the branch above, like the filters and the figures link: this
+		// acts on the whole archive, not on the rows of this page, so a filter
+		// that matches nothing must not hide it. The counts are over the whole
+		// table, so they say whether there is anything to delete at all.
+		if (array_sum($this->statusCounts) > 0) {
+	?>
 		<div class="form-group form-actions">
 			<div class="group-controls">
 				<form method="post" action="<?= _url('clickhistory', 'clear') ?>">

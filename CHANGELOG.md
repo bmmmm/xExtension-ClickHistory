@@ -24,6 +24,9 @@ existed in `metadata.json` during development but were never tagged or released.
   HTTP 200 — a `{"count": 0}` JSON or a CSV with only its header line, which
   looks like a complete backup. The query now runs before any download header
   goes out, and a failure leads back to the list with a notification instead.
+- "Delete the whole history" disappeared whenever the status filter matched
+  nothing, although the archive still had rows. It is now shown whenever there
+  is anything to delete, whatever the current page shows.
 
 ## [0.7.0] - 2026-10-01
 
