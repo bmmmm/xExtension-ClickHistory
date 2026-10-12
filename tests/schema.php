@@ -132,6 +132,19 @@ $check(
 	)
 );
 
+// PostgreSQL cuts identifiers at 63 bytes, and core's prefix there is
+// `freshrss_<user>_`: 49 characters with the longest user name core accepts
+// (app/Controllers/userController.php, USERNAME_PATTERN). Checked on the
+// statements for every dialect, so it fails without a PostgreSQL server too.
+$longestPrefix = 'freshrss_' . str_repeat('u', 39) . '_';
+$identifiers = [];
+foreach (ClickHistorySchema::createTable('pgsql') as $sql) {
+	preg_match_all('/`_([^`]+)`/', $sql, $matches);
+	$identifiers = array_merge($identifiers, $matches[1]);
+}
+$check('every name the PostgreSQL schema creates fits in 63 bytes after the longest prefix', $identifiers !== [] &&
+	max(array_map(static fn(string $name): int => strlen($longestPrefix . $name), $identifiers)) <= 63);
+
 // The real upsert, with the real bindings. Recorded, judged, then opened again —
 // the case the ON CONFLICT / ON DUPLICATE KEY clause exists for.
 /** @param array<string,string|int|null> $values */

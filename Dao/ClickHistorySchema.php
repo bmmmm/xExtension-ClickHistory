@@ -42,6 +42,15 @@ final class ClickHistorySchema {
 	 * InnoDB's row-size limit for nothing — core keeps `_entry.link` unindexed
 	 * for the same reason.
 	 *
+	 * The PostgreSQL index has a name short enough for the prefix: PostgreSQL
+	 * cuts every identifier at 63 bytes, and with core's default `freshrss_` and
+	 * a 39-character user name the prefix alone is 49. The name this used to have
+	 * came to 79 there and was cut — measured on PostgreSQL 16: still unique per
+	 * user, since the user name sits inside the first 63 bytes, but no longer the
+	 * name these statements ask for. A table created under that old name keeps
+	 * its index (ClickHistoryDAO only runs these statements for a table that does
+	 * not exist yet).
+	 *
 	 * @return list<string>
 	 */
 	public static function createTable(string $dbType): array {
@@ -83,7 +92,7 @@ final class ClickHistorySchema {
 							PRIMARY KEY (`id_entry`)
 						)
 						SQL,
-					'CREATE INDEX IF NOT EXISTS `_click_history_clicked_at_index` ON `_click_history`(`clicked_at`)',
+					'CREATE INDEX IF NOT EXISTS `_click_hist_at` ON `_click_history`(`clicked_at`)',
 				];
 			default:
 				return [
@@ -112,9 +121,11 @@ final class ClickHistorySchema {
 	 * Deliberately not expressed as `ADD COLUMN IF NOT EXISTS`: MySQL has no such
 	 * clause (MariaDB does), so the presence of one column is probed instead — a
 	 * SELECT that fails means it is missing, which works the same on all three
-	 * backends.
+	 * backends. Probing `id_entry`, which every version had, asks whether the
+	 * table exists at all.
 	 *
-	 * The column name never comes from a request; the two callers pass a literal.
+	 * The column name never comes from a request; the callers pass a literal or
+	 * a key of the arrays below.
 	 */
 	public static function columnProbe(string $column): string {
 		return "SELECT {$column} FROM `_click_history` LIMIT 1";
@@ -126,14 +137,17 @@ final class ClickHistorySchema {
 	 * column without one, and the rows already in the table have no category to
 	 * put there — the feed they came from may not even exist any more.
 	 *
-	 * @return list<string>
+	 * Keyed by the column each statement adds, so that a column can be probed
+	 * on its own: an upgrade interrupted between the two is resumed, not skipped.
+	 *
+	 * @return array{category_name:string, id_category:string}
 	 */
 	public static function addCategoryColumns(string $dbType): array {
 		$nameType = $dbType === 'mysql' ? 'VARCHAR(255)' : 'TEXT';
 		$intType = $dbType === 'sqlite' ? 'INTEGER' : 'INT';
 		return [
-			"ALTER TABLE `_click_history` ADD COLUMN `category_name` {$nameType} NOT NULL DEFAULT ''",
-			"ALTER TABLE `_click_history` ADD COLUMN `id_category` {$intType}",
+			'category_name' => "ALTER TABLE `_click_history` ADD COLUMN `category_name` {$nameType} NOT NULL DEFAULT ''",
+			'id_category' => "ALTER TABLE `_click_history` ADD COLUMN `id_category` {$intType}",
 		];
 	}
 
@@ -147,11 +161,15 @@ final class ClickHistorySchema {
 	 * ClickHistoryDAO::STATUS_UNRATED because it also has to sit in the CREATE
 	 * TABLE statements above, where the SQL is a nowdoc.
 	 *
-	 * @return list<string>
+	 * The newest column: a table that has it is up to date (ClickHistoryDAO adds
+	 * the columns in order and stops at the first failure), so probing it alone
+	 * is the whole check on every request but the first.
+	 *
+	 * @return array{status:string}
 	 */
 	public static function addStatusColumn(string $dbType): array {
 		$type = $dbType === 'mysql' ? 'VARCHAR(16)' : 'TEXT';
-		return ["ALTER TABLE `_click_history` ADD COLUMN `status` {$type} NOT NULL DEFAULT 'unrated'"];
+		return ['status' => "ALTER TABLE `_click_history` ADD COLUMN `status` {$type} NOT NULL DEFAULT 'unrated'"];
 	}
 
 	/**

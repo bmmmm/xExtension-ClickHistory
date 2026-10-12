@@ -47,6 +47,54 @@ putenv('FRESHRSS_ENV=silent');
 
 require_once __DIR__ . '/../Dao/ClickHistoryDAO.php';
 
+/**
+ * Core's connection classes with a record of what the DAO sent them, and a hook
+ * that runs before a statement does — for a concurrent request to get in first.
+ * Statements are recorded as the DAO wrote them, before core adds the prefix.
+ */
+trait RecordsStatements {
+	/** @var list<string> */
+	private array $statements = [];
+	/** @var (Closure(string): void)|null */
+	public ?Closure $beforeExec = null;
+
+	/**
+	 * What was sent since the last call, and a fresh record from here on.
+	 *
+	 * @return list<string>
+	 * @phpstan-impure
+	 */
+	public function takeStatements(): array {
+		$statements = $this->statements;
+		$this->statements = [];
+		return $statements;
+	}
+
+	#[\Override]
+	public function exec(string $statement): int|false {
+		$this->statements[] = $statement;
+		if ($this->beforeExec !== null) {
+			($this->beforeExec)($statement);
+		}
+		return parent::exec($statement);
+	}
+
+	#[\Override]
+	public function query(string $query, ?int $fetch_mode = null, mixed ...$fetch_mode_args): PDOStatement|false {
+		$this->statements[] = $query;
+		return parent::query($query, $fetch_mode, ...$fetch_mode_args);
+	}
+}
+final class TestPdoMysql extends Minz_PdoMysql {
+	use RecordsStatements;
+}
+final class TestPdoPgsql extends Minz_PdoPgsql {
+	use RecordsStatements;
+}
+final class TestPdoSqlite extends Minz_PdoSqlite {
+	use RecordsStatements;
+}
+
 $dsn = getenv('CLICKHISTORY_TEST_DSN');
 if (!is_string($dsn) || $dsn === '') {
 	$dsn = 'sqlite::memory:';
@@ -73,9 +121,9 @@ if ($dbType === 'mysql') {
 }
 try {
 	$pdo = match ($dbType) {
-		'mysql' => new Minz_PdoMysql($dsn, $user, $password, $options),
-		'pgsql' => new Minz_PdoPgsql($dsn, $user, $password, $options),
-		'sqlite' => new Minz_PdoSqlite($dsn, $user, $password, $options),
+		'mysql' => new TestPdoMysql($dsn, $user, $password, $options),
+		'pgsql' => new TestPdoPgsql($dsn, $user, $password, $options),
+		'sqlite' => new TestPdoSqlite($dsn, $user, $password, $options),
 		default => null,
 	};
 } catch (PDOException $e) {
@@ -142,7 +190,7 @@ $streamed = static fn(?Generator $rows): array => $rows === null ? [] : iterator
 
 // MySQL and PostgreSQL keep their database between runs, so start from nothing
 // rather than from whatever the last run left behind.
-$prefixes = ['chtest_dao_a_', 'chtest_dao_b_', 'chtest_dao_legacy_', 'chtest_dao_fresh_', 'chtest_dao_figures_'];
+$prefixes = ['chtest_dao_a_', 'chtest_dao_b_', 'chtest_dao_legacy_', 'chtest_dao_fresh_', 'chtest_dao_figures_', 'chtest_dao_race_'];
 $dropAll = static function () use ($pdo, $prefixes, $exec): void {
 	foreach ($prefixes as $prefix) {
 		$pdo->setPrefix($prefix);
@@ -162,6 +210,17 @@ $pdo->setPrefix($b);
 $dao->ensureTableExists();
 $check('a second prefix on the same connection gets a table of its own', $tableExists());
 $pdo->setPrefix($a);
+
+// On SQLite the prefix is empty for every user, who each have a database file
+// of their own instead; the once-per-process check has to tell them apart by
+// name. Two in-memory databases stand in for two users' files.
+if ($pdo->dbType() === 'sqlite') {
+	$first = new TestPdoSqlite('sqlite::memory:', null, null, $options);
+	$second = new TestPdoSqlite('sqlite::memory:', null, null, $options);
+	(new ClickHistoryDAO('first', $first))->ensureTableExists();
+	(new ClickHistoryDAO('second', $second))->ensureTableExists();
+	$check('on SQLite, a second user in the same process gets a table of their own', $second->query('SELECT 1 FROM `_click_history`') !== false);
+}
 
 // --- Recording, paging, counting ---------------------------------------------
 // Entry ids the size core gives them: microsecond timestamps, past 32 bits.
@@ -303,6 +362,13 @@ $check(
 	$ids($streamed($dao->streamAll(true))) === [$e1, $e2] && $ids($streamed($dao->streamAll(false))) === [$e2, $e1]
 );
 
+// Every later request, in a process of its own (another user name stands in for
+// that: the once-per-process check knows nothing of it yet), finds the table up
+// to date. That costs it the one probe and no DDL.
+$pdo->takeStatements();
+$check('a later request checks an up-to-date table with one probe and nothing else', (new ClickHistoryDAO('later', $pdo))->ensureTableExists() &&
+	$pdo->takeStatements() === [ClickHistorySchema::columnProbe('status')]);
+
 // --- An installation upgrading from the first version ------------------------
 // The table as the first release created it, with neither the category nor the
 // status columns, then nothing but the DAO's own way of catching up.
@@ -320,12 +386,48 @@ $exec(<<<SQL
 	SQL);
 $exec("INSERT INTO `_click_history` VALUES ({$e1}, 'https://example.org/1', 'One', 'Feed', 1, 100, 100)");
 
+$pdo->takeStatements();
 $check('the DAO upgrades a table from the first version', $dao->ensureTableExists());
+// The table exists, so it keeps the index it was created with: running the
+// CREATE statements again would give it a second one under the current name.
+$check('… without creating anything on a table that exists', array_filter(
+	$pdo->takeStatements(),
+	static fn(string $sql): bool => stripos(ltrim($sql), 'CREATE') === 0,
+) === []);
 $check('a row from before the upgrade is listed, unrated and without a category', $dao->listEntries(10, 0) === [[
 	'id_entry' => $e1, 'url' => 'https://example.org/1', 'title' => 'One', 'feed_name' => 'Feed', 'id_feed' => 1,
 	'category_name' => '', 'id_category' => null, 'clicked_at' => 100, 'first_clicked_at' => 100, 'status' => 'unrated',
 ]]);
 $check('the upgraded table takes a rating', $dao->setStatus($e1, ClickHistoryDAO::STATUS_GOOD) && $stored('status', $e1) === 'good');
+
+// Two requests upgrading the same table at once: both see the status column
+// missing, and the other one's ALTER lands between this one's probe and its
+// own ALTER, which the database then refuses as a duplicate column. The table
+// is the second version's, which already had the category.
+$pdo->setPrefix($prefixes[5]);
+$exec(<<<SQL
+	CREATE TABLE `_click_history` (
+		id_entry BIGINT NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL,
+		feed_name {$nameType} NOT NULL, id_feed {$intType},
+		category_name {$nameType} NOT NULL DEFAULT '', id_category {$intType},
+		clicked_at BIGINT NOT NULL, first_clicked_at BIGINT NOT NULL,
+		PRIMARY KEY (id_entry)
+	)
+	SQL);
+$pdo->takeStatements();
+$raced = false;
+$pdo->beforeExec = static function (string $sql) use ($pdo, &$raced): void {
+	if (!$raced && str_contains($sql, 'ADD COLUMN `status`')) {
+		$raced = true;
+		$pdo->exec($sql);
+	}
+};
+$check('an upgrade that another request finished first still succeeds', (new ClickHistoryDAO('race', $pdo))->ensureTableExists() && $raced);
+$pdo->beforeExec = null;
+$check('a column the table already has is not added again', array_filter(
+	$pdo->takeStatements(),
+	static fn(string $sql): bool => str_contains($sql, 'ADD COLUMN `category_name`') || str_contains($sql, 'ADD COLUMN `id_category`'),
+) === []);
 
 // Leave nothing behind in a database that outlives the process.
 $dropAll();

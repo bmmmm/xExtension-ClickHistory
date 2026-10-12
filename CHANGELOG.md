@@ -33,6 +33,17 @@ existed in `metadata.json` during development but were never tagged or released.
   even when it could not be written. It is now written once, and a failure is
   reported. A settings request without the recording switch keeps the stored
   value instead of turning recording off.
+- Every request ran `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`
+  and two column probes before touching the history. An up-to-date table now
+  costs one probe; the DDL only runs for a table that is missing or behind.
+- Two requests upgrading the same table at once could fail the slower one on
+  a "duplicate column" error. A column that is there after a refused `ALTER`
+  now counts as added, and an upgrade interrupted between two columns resumes.
+- On SQLite, one process serving several users (a CLI run over every account)
+  took the first user's table as proof that the others existed.
+- On PostgreSQL, a newly created table's index gets a name that fits in 63
+  bytes with the longest user name; the old name was cut. Existing tables
+  keep their index.
 
 ## [0.7.1] - 2026-10-13
 

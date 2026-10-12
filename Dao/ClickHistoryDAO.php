@@ -45,33 +45,38 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	 * installation where that never ran (enabled by hand, restored from a backup)
 	 * would otherwise fail on every single request instead of repairing itself once.
 	 *
-	 * Keyed by the PDO prefix rather than a plain flag, because `_click_history` is
-	 * a different table per user on MySQL and PostgreSQL (`<prefix><user>_`). One
-	 * process serving two users — a CLI run over every account, or any setup where
-	 * a request switches context — would otherwise take the first user's table as
-	 * proof that the second one's exists.
+	 * Keyed by the user and the PDO prefix. The prefix alone would do on MySQL
+	 * and PostgreSQL, where it carries the user name (`<prefix><user>_`), but on
+	 * SQLite it is empty for everybody — each user has a database file of their
+	 * own instead. One process serving two users (a CLI run over every account)
+	 * would otherwise take the first user's table as proof that the second
+	 * one's exists.
 	 *
 	 * @var array<string,true>
 	 */
 	private static array $tableChecked = [];
 
+	/** Whose table this is, for $tableChecked. */
+	private readonly string $user;
+
+	public function __construct(?string $currentUser = null, ?Minz_Pdo $currentPdo = null) {
+		parent::__construct($currentUser, $currentPdo);
+		// Not Minz_ModelPdo's current_user: that one is left unset when the
+		// connection is handed in rather than opened here.
+		$this->user = $currentUser ?? Minz_User::name() ?? '';
+	}
+
 	/** @return bool false if the table is missing and could not be created */
 	public function ensureTableExists(): bool {
-		$key = $this->pdo->prefix();
+		$key = $this->user . '/' . $this->pdo->prefix();
 		if (isset(self::$tableChecked[$key])) {
 			return true;
 		}
-		foreach (ClickHistorySchema::createTable($this->pdo->dbType()) as $sql) {
-			if ($this->pdo->exec($sql) === false) {
-				Minz_Log::error('ClickHistory: cannot create table: ' . json_encode($this->pdo->errorInfo()));
-				return false;
-			}
-		}
-		// In the order the columns were introduced. Each probe is independent, so a
-		// table stuck at any earlier version catches up in one pass.
-		$dbType = $this->pdo->dbType();
-		if (!$this->ensureColumns('category_name', ClickHistorySchema::addCategoryColumns($dbType)) ||
-			!$this->ensureColumns('status', ClickHistorySchema::addStatusColumn($dbType))) {
+		// Every request but the very first after an install or an update costs
+		// this one probe and no DDL: a table with the newest column has all the
+		// others too. CREATE … IF NOT EXISTS is not free even when it does
+		// nothing — on MySQL it takes a metadata lock on the table.
+		if (!$this->hasColumn('status') && !$this->createOrUpgrade()) {
 			return false;
 		}
 		self::$tableChecked[$key] = true;
@@ -79,23 +84,58 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	}
 
 	/**
-	 * Adds columns a table created by an earlier version does not have yet: a probe
-	 * that fails means the column is missing (see ClickHistorySchema::columnProbe()).
-	 *
-	 * @param string $probe the column whose absence means the statements must run
-	 * @param list<string> $statements
+	 * Creates the table if there is none, then adds what an earlier version's
+	 * table lacks. The index is part of creating: an existing table has the one
+	 * the version that created it gave it, under that version's name.
 	 */
-	private function ensureColumns(string $probe, array $statements): bool {
-		if ($this->pdo->query(ClickHistorySchema::columnProbe($probe)) !== false) {
-			return true;
+	private function createOrUpgrade(): bool {
+		$dbType = $this->pdo->dbType();
+		if (!$this->hasColumn('id_entry')) {
+			foreach (ClickHistorySchema::createTable($dbType) as $sql) {
+				if ($this->pdo->exec($sql) === false) {
+					Minz_Log::error('ClickHistory: cannot create table: ' . json_encode($this->pdo->errorInfo()));
+					return false;
+				}
+			}
 		}
-		foreach ($statements as $sql) {
-			if ($this->pdo->exec($sql) === false) {
-				Minz_Log::error("ClickHistory: cannot add the {$probe} column: " . json_encode($this->pdo->errorInfo()));
+		// In the order the columns were introduced, which is what lets the newest
+		// one stand for all of them in ensureTableExists().
+		return $this->ensureColumns(ClickHistorySchema::addCategoryColumns($dbType)) &&
+			$this->ensureColumns(ClickHistorySchema::addStatusColumn($dbType));
+	}
+
+	/**
+	 * Adds the columns a table created by an earlier version does not have yet,
+	 * one probe per column (see ClickHistorySchema::columnProbe()).
+	 *
+	 * A failed ALTER is probed again before it counts as a failure: two requests
+	 * hitting the same not-yet-upgraded table both see the column missing, and
+	 * the slower one's ALTER is refused because the faster one's has already
+	 * added it. The column being there is what both of them were after.
+	 *
+	 * @param array<string,string> $statements the statement adding each column, by column
+	 */
+	private function ensureColumns(array $statements): bool {
+		foreach ($statements as $column => $sql) {
+			if ($this->hasColumn($column)) {
+				continue;
+			}
+			if ($this->pdo->exec($sql) !== false) {
+				continue;
+			}
+			// Kept before the second probe, which would replace it with its own.
+			$error = $this->pdo->errorInfo();
+			if (!$this->hasColumn($column)) {
+				Minz_Log::error("ClickHistory: cannot add the {$column} column: " . json_encode($error));
 				return false;
 			}
 		}
 		return true;
+	}
+
+	/** @phpstan-impure the answer changes as soon as the column is added */
+	private function hasColumn(string $column): bool {
+		return $this->pdo->query(ClickHistorySchema::columnProbe($column)) !== false;
 	}
 
 	/**
