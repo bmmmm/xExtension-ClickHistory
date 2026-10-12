@@ -213,6 +213,12 @@ php tests/export.php
 # links, the clear button). Needs the .freshrss-core checkout as well.
 php tests/index.php
 
+# The extension inside a real FreshRSS (copied from .freshrss-core, SQLite,
+# PHP's built-in server on 127.0.0.1:18765, driven with curl). Needs php and
+# curl; CLICKHISTORY_E2E_PORT picks another port, PHP='php -n' skips a php.ini
+# that gets in the way.
+sh tests/e2e.sh
+
 # Every language defines exactly the translation keys the code uses, and core
 # (.freshrss-core) defines the ones the views borrow from it.
 php tests/i18n.php
