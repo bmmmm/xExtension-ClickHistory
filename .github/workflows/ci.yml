@@ -14,7 +14,7 @@ permissions:
 # FreshRSS core, checked out by every job: the oldest release this extension
 # supports, so using anything newer than it fails the build rather than a
 # stranger's install. Other places name it and have to move with it — the
-# clone in scripts/deps-check.sh, the hints the PHP tests print, the README,
+# clone in scripts/deps-check.sh, the hints the tests print, the README,
 # .github/SECURITY.md and the fixtures' provenance: `git grep -n '1\.29\.0'`.
 env:
   FRESHRSS_CORE_REF: '1.29.0'
@@ -367,9 +367,10 @@ jobs:
     # matrix, and idle containers are cheaper than splitting this into jobs that
     # would then drift apart. MySQL is pinned to what `mysql:8` resolved to on
     # 2026-10-12: that tag follows whatever 8.x is current, and a server upgrade
-    # should be a diff here rather than a red run nobody changed anything for. The passwords are literals on purpose — these
-    # containers exist for the length of one job and hold nothing but a table this
-    # file's own test creates and drops.
+    # should be a diff here rather than a red run nobody changed anything for.
+    # The passwords are literals on purpose — these containers exist for the
+    # length of one job and hold nothing but a table this file's own test creates
+    # and drops.
     services:
       mysql:
         image: mysql:8.4.11

@@ -227,7 +227,8 @@ check 'the logged-in user gets the click listener' "$(contains "$(get 'c=index')
 noise=$(cat "$work/server.log" "$core"/data/users/*/log*.txt 2>/dev/null |
 	grep -E '(Deprecated|Warning|Notice|Fatal error|Parse error)' |
 	grep -F -e "$root/" -e 'extensions/xExtension-ClickHistory/')
-check 'PHP reported nothing about this extension' "$(lacks "$noise" 'xExtension-ClickHistory')"
+# Whatever the checkout is called: $noise holds only lines about this repository.
+check 'PHP reported nothing about this extension' "$([ -z "$noise" ] && echo ok || echo no)"
 [ -z "$noise" ] || printf '%s\n' "$noise"
 
 echo
