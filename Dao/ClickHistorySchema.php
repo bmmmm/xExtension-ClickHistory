@@ -164,6 +164,12 @@ final class ClickHistorySchema {
 	 * nothing but the timestamp, so a second click cannot rewrite the archived
 	 * values. `status` in particular has to stay out of the UPDATE: reopening an
 	 * article the user has already judged must not throw that judgement away.
+	 *
+	 * Only ever forward: two tabs or a slow connection can deliver an older
+	 * click after a newer one, and the later write must not take the entry back
+	 * in time. SQLite has no GREATEST(), but its two-argument MAX() is the same
+	 * thing; PostgreSQL gets the existing column qualified, as its documentation
+	 * writes it next to `excluded`.
 	 */
 	public static function record(string $dbType): string {
 		$sql = <<<'SQL'
@@ -171,11 +177,13 @@ final class ClickHistorySchema {
 				(id_entry, url, title, feed_name, id_feed, category_name, id_category, clicked_at, first_clicked_at, status)
 			VALUES (:id_entry, :url, :title, :feed_name, :id_feed, :category_name, :id_category, :clicked_at, :first_clicked_at, :status)
 			SQL;
-		return $sql . "\n" . ($dbType === 'mysql'
+		return $sql . "\n" . match ($dbType) {
 			// VALUES() is deprecated from MySQL 8.0.20 in favour of an alias, but
 			// the alias syntax does not exist before it and FreshRSS supports 5.7.
-			? 'ON DUPLICATE KEY UPDATE clicked_at = VALUES(clicked_at)'
-			: 'ON CONFLICT (id_entry) DO UPDATE SET clicked_at = excluded.clicked_at');
+			'mysql' => 'ON DUPLICATE KEY UPDATE clicked_at = GREATEST(clicked_at, VALUES(clicked_at))',
+			'pgsql' => 'ON CONFLICT (id_entry) DO UPDATE SET clicked_at = GREATEST(`_click_history`.clicked_at, excluded.clicked_at)',
+			default => 'ON CONFLICT (id_entry) DO UPDATE SET clicked_at = MAX(clicked_at, excluded.clicked_at)',
+		};
 	}
 
 	/**

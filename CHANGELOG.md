@@ -26,6 +26,9 @@ existed in `metadata.json` during development but were never tagged or released.
   the list as if it had worked. It now says the change could not be saved, and
   an id beyond the largest BIGINT is refused up front (a click with one is a
   400) instead of failing in the database.
+- A click that reached the server after a newer one for the same article —
+  another tab, a slow connection — set its "last opened" time back. It now only
+  ever moves forward.
 
 ## [0.7.1] - 2026-10-13
 

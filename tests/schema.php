@@ -179,6 +179,16 @@ $check('a second click moves clicked_at forward', $asString($row['clicked_at'] ?
 $check('a second click leaves first_clicked_at alone', $asString($row['first_clicked_at'] ?? null) === '100');
 $check('a second click does not rewrite the archived title', $asString($row['title'] ?? null) === 'First title');
 
+// A click that arrives late — another tab, a slow connection — is older than
+// the one already stored and must not take the entry back in time.
+$record([
+	'id_entry' => '1', 'url' => 'http://a', 'title' => 'First title', 'feed_name' => 'Feed',
+	'id_feed' => 1, 'category_name' => 'Cat', 'id_category' => 1,
+	'clicked_at' => 150, 'first_clicked_at' => 150, 'status' => 'unrated',
+]);
+$row = $fetchRow($prepareSql('SELECT clicked_at FROM `_click_history` WHERE id_entry = 1', $fresh));
+$check('an older click arriving late leaves clicked_at where it was', $asString($row['clicked_at'] ?? null) === '200');
+
 // --- An installation upgrading from an earlier version -----------------------
 // The old CREATE TABLE is written out here rather than obtained from the code:
 // it is what a previous release left behind, and that statement does not exist
