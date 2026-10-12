@@ -27,6 +27,10 @@ existed in `metadata.json` during development but were never tagged or released.
 - "Delete the whole history" disappeared whenever the status filter matched
   nothing, although the archive still had rows. It is now shown whenever there
   is anything to delete, whatever the current page shows.
+- On an instance that allows anonymous reading, the click listener was loaded
+  for anonymous visitors as well, and every click they made was a POST that
+  the controller refused with a 403 and a console error. The script is now
+  only added for a logged-in user.
 
 ## [0.7.0] - 2026-10-01
 

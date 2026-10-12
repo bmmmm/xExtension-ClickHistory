@@ -49,7 +49,13 @@ final class ClickHistoryExtension extends Minz_Extension {
 		// The click listener needs the stream, which is the `index` controller in
 		// all three reading modes (normal, reader, global). The extension's own
 		// pages render no article markup, so the script has nothing to do there.
-		if ($controller === 'index') {
+		//
+		// Only for a logged-in user: with allow_anonymous, core enables the
+		// default user's extensions for anonymous visitors too (FreshRSS::init),
+		// but the controller refuses them in firstAction(), so every click would
+		// be a POST into a 403 and a console error. Auth is initialised before
+		// extensions are enabled, so hasAccess() already has its answer here.
+		if ($controller === 'index' && FreshRSS_Auth::hasAccess()) {
 			Minz_View::appendScript($this->getFileUrl('script.js'));
 		}
 	}
