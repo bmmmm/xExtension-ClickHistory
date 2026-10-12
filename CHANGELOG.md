@@ -32,10 +32,12 @@ existed in `metadata.json` during development but were never tagged or released.
   the controller refused with a 403 and a console error. The script is now
   only added for a logged-in user.
 - A click whose request did not get through — the network was down, the
-  session had expired — could not be tried again in the same page load: the
+  server answered 5xx — could not be tried again in the same page load: the
   once-per-load guard kept the id although nothing had been recorded. The id
-  is released on any failure now, and a redirect (fetch follows it to the login
-  page, which answers 200) counts as one too.
+  is released on any failure now. A response that arrived through a redirect
+  counts as one too: core itself answers a stale token with a 403, which was
+  already caught, but a same-origin login portal in front of FreshRSS answers
+  200 and used to look like a recorded click.
 
 ### Changed
 

@@ -16,11 +16,11 @@ This extension records that one gesture and nothing else.
 
 ## What it does
 
-* Records a click on an article's own link — the headline of an expanded
-  article, the link icon in the footer, and the headline in the collapsed list
-  when it actually opens the link (Ctrl/Cmd-click or middle-click; a plain
-  click or tap there only expands the article and is not recorded) — plus the
-  core's <kbd>go to website</kbd> shortcut.
+* Records a click or middle-click on an article's own link — the headline of
+  an expanded article, the link icon in the footer, and the headline in the
+  collapsed list when it actually opens the link (Ctrl/Cmd-click or
+  middle-click; a plain click or tap there only expands the article and is not
+  recorded) — plus the core's <kbd>go to website</kbd> shortcut.
 * Shows the collection under **Click history**: headline, feed, category, when
   it was last opened, one page at a time.
 * **Where to find it:** the **Click history** entry in the header menu — the

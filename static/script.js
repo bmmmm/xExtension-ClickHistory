@@ -44,8 +44,10 @@
 			return true;
 		}
 		// For a request that did not get through — the network was down, the
-		// session had expired. Without this the next click on the same article in
-		// the same page load would be dropped without even trying.
+		// server answered 5xx. Without this the next click on the same article in
+		// the same page load would be dropped without even trying. (After the
+		// session has expired a retry fails again, since the token in the page is
+		// the dead session's; that case needs a reload either way.)
 		claim.release = function (entryId) {
 			sent.delete(entryId);
 		};
@@ -144,8 +146,10 @@
 				// fetch() only rejects when the request never completed, so without
 				// this a 400, a 404 or a 500 looks exactly like a recorded click — the
 				// one failure mode this extension has, and the console would say
-				// nothing about it. A redirect is followed and answers 200: the login
-				// page, after the session has expired. Nothing was recorded then either.
+				// nothing about it. Core's own answer to a stale session is a 403
+				// (FreshRSS::initAuth → Minz_Error::error), which this catches; the
+				// redirect check is for a same-origin login portal in front of
+				// FreshRSS, which fetch() follows to a page that answers 200.
 				if (!response.ok || response.redirected) {
 					deps.guard.release(entryId);
 					deps.error('Click history: recording entry ' + entryId + ' failed with HTTP ' +
