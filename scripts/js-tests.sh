@@ -6,13 +6,18 @@
 # parses its output. The whole directory, not one file by name, so a test added
 # tomorrow cannot be silently skipped. The glob rather than `tests/`: newer Node
 # reads a bare directory as a module path and reports zero tests.
+#
+# Streamed through tee rather than printed once node is done: a test that hangs
+# would otherwise leave CI silent until the job times out, with nothing in the
+# log to say which one. A pipeline reports tee's status, so node's own travels
+# through a file.
 set -u
 log=$(mktemp)
-trap 'rm -f "$log"' EXIT
-status=0
-node --test --test-reporter=tap tests/*.test.js > "$log" 2>&1 || status=$?
-cat "$log"
-[ "$status" -eq 0 ] || exit "$status"
+rc=$(mktemp)
+trap 'rm -f "$log" "$rc"' EXIT
+{ status=0; node --test --test-reporter=tap tests/*.test.js 2>&1 || status=$?; echo "$status" > "$rc"; } | tee "$log"
+status=$(cat "$rc")
+[ "${status:-1}" -eq 0 ] || exit "${status:-1}"
 
 # `node --test` exits 0 on a run where everything was skipped, and on a run that
 # found no files at all, so the counts are read back.
