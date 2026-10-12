@@ -19,8 +19,6 @@ From the review rounds of 2026-10-12/13; each one commit with a gate that can fa
   with long user names; a shorter suffix needs a schema upgrade.
 - **tableChecked key**: on SQLite `prefix()` is always `''`, so "per user" does
   not hold there; key on `Minz_User::name()` plus prefix.
-- **Config saved twice** (`extension.php` `handleConfigureAction`), return value
-  ignored; a missing `track_clicks` falls back to false, not the stored value.
 - **MySQL collation of `status`**: only if a symptom shows.
 - **Frontend**: `style.css` `min-width: 840px` vs core's breakpoint (841px);
   four `<nav>` without `aria-label`; README: context menu, long press and drag

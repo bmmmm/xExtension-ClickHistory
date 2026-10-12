@@ -29,6 +29,10 @@ existed in `metadata.json` during development but were never tagged or released.
 - A click that reached the server after a newer one for the same article —
   another tab, a slow connection — set its "last opened" time back. It now only
   ever moves forward.
+- Saving the settings wrote the user configuration twice and said "updated"
+  even when it could not be written. It is now written once, and a failure is
+  reported. A settings request without the recording switch keeps the stored
+  value instead of turning recording off.
 
 ## [0.7.1] - 2026-10-13
 

@@ -45,21 +45,28 @@ db="$core/data/users/$user/db.sqlite"
 # header when the request comes from a trusted source (127.0.0.0/8 by default),
 # so a request without that header is a visitor who is not logged in — which is
 # what scenario 8 needs, with anonymous reading allowed.
+#
+# The production environment, as an installation runs it: in development core
+# prints every warning into the response, so a failure that is supposed to come
+# back as a notification (scenario 10) never gets its redirect out. Warnings
+# still reach the server's log either way, which is what scenario 9 reads.
 (
 	cd "$core" &&
 	$php cli/do-install.php --default-user "$user" --auth-type http_auth --allow-anonymous \
-		--db-type sqlite --environment development --base-url "http://127.0.0.1:$port/" &&
+		--db-type sqlite --environment production --base-url "http://127.0.0.1:$port/" &&
 	$php cli/create-user.php --user "$user" --no-default-feeds
 ) > "$work/install.log" 2>&1 || { cat "$work/install.log"; exit 1; }
 
 # The extension switched on for the user, and two entries to click, one of them
 # with what core stores for "&" in a title, a link, a feed and a category name:
 # the HTML entity. The other one's link carries a tracking parameter for the
-# copy button to leave out.
+# copy button to leave out. Another extension's settings sit next to this
+# one's, for scenario 10 to leave alone.
 $php -r '
 	[, $config, $db] = $argv;
 	$conf = require $config;
 	$conf["extensions_enabled"] = ["Click History" => true];
+	$conf["extensions"] = ["Other extension" => ["kept" => true]];
 	file_put_contents($config, "<?php\nreturn " . var_export($conf, true) . ";\n");
 	$pdo = new PDO("sqlite:" . $db, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 	$pdo->exec("INSERT INTO category (id, name) VALUES (2, \"News &amp; Views\")");
@@ -236,6 +243,26 @@ anon=$(curl -s "$base?c=index")
 check 'a visitor who is not logged in gets the reading view' "$(contains "$anon" 'id="stream"')"
 check '... without the click listener' "$(lacks "$anon" "$script")"
 check 'the logged-in user gets the click listener' "$(contains "$(get 'c=index')" "$script")"
+
+# 10 — the settings. A request that leaves a field out keeps what is stored
+# for it, the checkbox included; the form itself always sends a value.
+conf='c=extension&a=configure&e=Click%20History'
+post "$conf" --data 'page_size=20' -o /dev/null
+check 'a settings request without track_clicks leaves recording on' \
+	"$(contains "$(post 'c=clickhistory&a=record' --data "id=$id1")" '{"ok":true}')"
+post "$conf" --data 'track_clicks=0&page_size=20' -o /dev/null
+check 'switching recording off is saved' \
+	"$(contains "$(post 'c=clickhistory&a=record' --data "id=$id1")" '"reason":"disabled"')"
+# A user directory that cannot be written: core's save() fails at the
+# temporary file, and the answer has to say so rather than "updated".
+chmod 555 "$core/data/users/$user"
+page=$(post "$conf" --data 'track_clicks=1&page_size=20' -L)
+chmod 755 "$core/data/users/$user"
+check 'settings that could not be written say so' \
+	"$(contains "$page" 'An error occurred while saving configuration')$(lacks "$page" 'Configuration has been updated')"
+check "saving the settings leaves another extension's settings alone" "$($php -r '
+	$conf = require $argv[1];
+	echo ($conf["extensions"]["Other extension"]["kept"] ?? null) === true ? "ok" : "no";' "$core/data/users/$user/config.php")"
 
 # 9 — what PHP said about this repository's files while all of the above ran:
 # the built-in server's own output, and core's logs. The paths come either way,

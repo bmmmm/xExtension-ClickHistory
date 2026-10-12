@@ -91,17 +91,33 @@ final class ClickHistoryExtension extends Minz_Extension {
 		// default, so a request carrying only some of the fields cannot silently
 		// reset the rest. An unchecked checkbox sends nothing at all, which would
 		// make track_clicks the one field that breaks that rule — configure.phtml
-		// therefore puts a hidden `0` in front of it, so it is always present and
-		// paramBoolean() reads an answer rather than an absence.
+		// therefore puts a hidden `0` in front of it, so the form always sends an
+		// answer and only a request made some other way reaches the fallback.
 		$current = $this->settings();
+		$values = [
+			'track_clicks' => Minz_Request::paramTernary('track_clicks') ?? $current['track_clicks'],
+			'page_size' => self::clampInt(
+				Minz_Request::paramIntNull('page_size'), self::PAGE_SIZE_MIN, self::PAGE_SIZE_MAX, $current['page_size'],
+			),
+		];
 
-		$this->setUserConfigurationValue('track_clicks', Minz_Request::paramBoolean('track_clicks'));
-		$this->setUserConfigurationValue('page_size', self::clampInt(
-			Minz_Request::paramIntNull('page_size'), self::PAGE_SIZE_MIN, self::PAGE_SIZE_MAX, $current['page_size'],
-		));
-		Minz_Request::good(_t('feedback.conf.updated'), [
-			'c' => 'extension', 'a' => 'configure', 'params' => ['e' => urlencode($this->getName())],
-		]);
+		// Written here rather than through setUserConfigurationValue(), which
+		// saves the whole user configuration on every call and drops save()'s
+		// answer: two fields were two writes, and a configuration that could not
+		// be written still came back as "updated". Both settings are always
+		// written, so nothing else under this name survives: what could be there is
+		// `default_status`, left over from a version that no longer reads it.
+		$conf = FreshRSS_Context::userConf();
+		$extensions = $conf->hasParam('extensions') ? $conf->extensions : [];
+		$extensions[$this->getName()] = $values;
+		$conf->extensions = $extensions;
+
+		$url = ['c' => 'extension', 'a' => 'configure', 'params' => ['e' => urlencode($this->getName())]];
+		if ($conf->save()) {
+			Minz_Request::good(_t('feedback.conf.updated'), $url);
+		} else {
+			Minz_Request::bad(_t('feedback.conf.error'), $url);
+		}
 	}
 
 	/**
