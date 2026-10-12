@@ -6,6 +6,10 @@
 set -eu
 # The ref is FRESHRSS_CORE_REF in ci.yml; keep it in step (see the comment there).
 [ -d .freshrss-core ] || git clone -q --depth 1 --branch 1.29.0 https://github.com/FreshRSS/FreshRSS .freshrss-core
+# A checkout left over from before a bump of that ref would analyse against the
+# wrong core and pass.
+core=$(git -C .freshrss-core describe --tags --exact-match 2>/dev/null || echo none)
+[ "$core" = 1.29.0 ] || { echo ".freshrss-core is at $core, not 1.29.0: remove it and rerun"; exit 1; }
 pnpm install --frozen-lockfile --silent
 composer install --no-interaction --quiet
 vendor/bin/phpcs .
