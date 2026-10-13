@@ -161,9 +161,11 @@ final class ClickHistorySchema {
 	 * ClickHistoryDAO::STATUS_UNRATED because it also has to sit in the CREATE
 	 * TABLE statements above, where the SQL is a nowdoc.
 	 *
-	 * The newest column: a table that has it is up to date (ClickHistoryDAO adds
-	 * the columns in order and stops at the first failure), so probing it alone
-	 * is the whole check on every request but the first.
+	 * The newest column: a table that has it and `id_category` is up to date
+	 * (ClickHistoryDAO adds the columns in order and stops at the first
+	 * failure), so probing those two is the whole check on every request but
+	 * the first. `status` alone is not enough: up to 0.7.1 the DAO probed only
+	 * `category_name` and went on to add `status` after `id_category` had failed.
 	 *
 	 * @return array{status:string}
 	 */

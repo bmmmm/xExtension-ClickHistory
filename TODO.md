@@ -28,13 +28,9 @@ From the review of 2026-10-13 (copy link and B2–B11), all P2:
   navigator.clipboard, window.setTimeout…)` in `static/history.js` runs in no
   test; a typo there breaks every copy with the gates green (confirmed working
   live on 2026-10-13).
-- **Missing index is no longer repaired**: the index is only created with the
-  table, so a `CREATE INDEX` that failed after `CREATE TABLE` stays missing.
-- **Half-upgraded table from ≤ 0.7.1**: the old code could add `status` while
-  `id_category` had failed; the new fast path takes that table as current and
-  every click fails. Not a regression, and no such table is known.
-- **Concurrent first `CREATE` on PostgreSQL** can fail the slower request once
-  (unique_violation); only the ALTER path re-probes.
+- **Index missing on a table from 0.7.2/0.7.3**: those versions ran `CREATE
+  INDEX` only with the table and outside a transaction; if it failed, nothing adds
+  the index later. No such table is known.
 - **MariaDB older than 12.3 is not in CI** (10.11 on Debian 12, 10.6 on
   Ubuntu 22.04): SQL that needs a newer release would pass CI and fail there.
   The current SQL ran green on 10.11.19 (2026-10-13).

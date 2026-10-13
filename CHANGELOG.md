@@ -13,6 +13,19 @@ existed in `metadata.json` during development but were never tagged or released.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Missing index**: on SQLite and PostgreSQL the table and its index on
+  `clicked_at` are now created in one transaction, so a failed `CREATE INDEX` no
+  longer leaves a new table without its index for good. A table that already
+  lacks it is not repaired.
+- **Half-upgraded table from up to 0.7.1**: an upgrade that added `status` after
+  adding `id_category` had failed left a table every click failed on. The check on
+  each request now probes both columns and adds the missing one.
+- **Concurrent first request on PostgreSQL**: when two requests created the table
+  at once, the slower one's `CREATE TABLE` could fail and the click was lost. A
+  failed create is now probed again, as a failed column upgrade already was.
+
 ## [0.7.3] - 2026-10-13
 
 ### Changed

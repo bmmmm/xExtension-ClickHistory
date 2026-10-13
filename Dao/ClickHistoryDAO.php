@@ -73,10 +73,12 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 			return true;
 		}
 		// Every request but the very first after an install or an update costs
-		// this one probe and no DDL: a table with the newest column has all the
-		// others too. CREATE … IF NOT EXISTS is not free even when it does
-		// nothing — on MySQL it takes a metadata lock on the table.
-		if (!$this->hasColumn('status') && !$this->createOrUpgrade()) {
+		// this one probe and no DDL: a table with the two newest columns has all
+		// the others too. CREATE … IF NOT EXISTS is not free even when it does
+		// nothing — on MySQL it takes a metadata lock on the table. `id_category`
+		// is in it because up to 0.7.1 an upgrade could add `status` after adding
+		// `id_category` had failed, and every click into such a table fails.
+		if (!$this->hasColumn('id_category, status') && !$this->createOrUpgrade()) {
 			return false;
 		}
 		self::$tableChecked[$key] = true;
@@ -90,18 +92,53 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 	 */
 	private function createOrUpgrade(): bool {
 		$dbType = $this->pdo->dbType();
-		if (!$this->hasColumn('id_entry')) {
-			foreach (ClickHistorySchema::createTable($dbType) as $sql) {
-				if ($this->pdo->exec($sql) === false) {
-					Minz_Log::error('ClickHistory: cannot create table: ' . json_encode($this->pdo->errorInfo()));
-					return false;
-				}
-			}
+		if (!$this->hasColumn('id_entry') && !$this->createTable($dbType)) {
+			return false;
 		}
 		// In the order the columns were introduced, which is what lets the newest
-		// one stand for all of them in ensureTableExists().
+		// ones stand for all of them in ensureTableExists().
 		return $this->ensureColumns(ClickHistorySchema::addCategoryColumns($dbType)) &&
 			$this->ensureColumns(ClickHistorySchema::addStatusColumn($dbType));
+	}
+
+	/**
+	 * Runs ClickHistorySchema::createTable(). On SQLite and PostgreSQL that is
+	 * the table and then its index, in one transaction — both have transactional
+	 * DDL, and an index lost between the two statements would never be created:
+	 * only a missing table gets here. MySQL declares the index inline and
+	 * commits DDL on its own anyway.
+	 *
+	 * A transaction somebody else already opened is left alone (a nested
+	 * beginTransaction() throws); core holds none where this runs.
+	 *
+	 * A failed create is probed again, as a failed ALTER is: two requests on a
+	 * fresh installation both see no table, and on PostgreSQL the slower one's
+	 * CREATE TABLE IF NOT EXISTS can still fail on a catalog unique index.
+	 */
+	private function createTable(string $dbType): bool {
+		$transaction = $dbType !== 'mysql' && !$this->pdo->inTransaction() && $this->pdo->beginTransaction();
+		$created = true;
+		foreach (ClickHistorySchema::createTable($dbType) as $sql) {
+			if ($this->pdo->exec($sql) === false) {
+				$created = false;
+				break;
+			}
+		}
+		if ($created && (!$transaction || $this->pdo->commit())) {
+			return true;
+		}
+		// Kept before the rollback and the second probe, which replace it.
+		$error = $this->pdo->errorInfo();
+		// A failed commit may already have ended the transaction, and rollBack()
+		// throws outside one.
+		if ($transaction && $this->pdo->inTransaction()) {
+			$this->pdo->rollBack();
+		}
+		if ($this->hasColumn('id_entry')) {
+			return true;
+		}
+		Minz_Log::error('ClickHistory: cannot create table: ' . json_encode($error));
+		return false;
 	}
 
 	/**
@@ -133,7 +170,10 @@ final class ClickHistoryDAO extends Minz_ModelPdo {
 		return true;
 	}
 
-	/** @phpstan-impure the answer changes as soon as the column is added */
+	/**
+	 * @param string $column one column, or several separated by commas
+	 * @phpstan-impure the answer changes as soon as the column is added
+	 */
 	private function hasColumn(string $column): bool {
 		return $this->pdo->query(ClickHistorySchema::columnProbe($column)) !== false;
 	}

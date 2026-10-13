@@ -48,8 +48,9 @@ putenv('FRESHRSS_ENV=silent');
 require_once __DIR__ . '/../Dao/ClickHistoryDAO.php';
 
 /**
- * Core's connection classes with a record of what the DAO sent them, and a hook
- * that runs before a statement does — for a concurrent request to get in first.
+ * Core's connection classes with a record of what the DAO sent them, a hook
+ * that runs before a statement does — for a concurrent request to get in first —
+ * and a substring that makes exec() fail without running the statement.
  * Statements are recorded as the DAO wrote them, before core adds the prefix.
  */
 trait RecordsStatements {
@@ -57,6 +58,7 @@ trait RecordsStatements {
 	private array $statements = [];
 	/** @var (Closure(string): void)|null */
 	public ?Closure $beforeExec = null;
+	public ?string $failOn = null;
 
 	/**
 	 * What was sent since the last call, and a fresh record from here on.
@@ -75,6 +77,9 @@ trait RecordsStatements {
 		$this->statements[] = $statement;
 		if ($this->beforeExec !== null) {
 			($this->beforeExec)($statement);
+		}
+		if ($this->failOn !== null && str_contains($statement, $this->failOn)) {
+			return false;
 		}
 		return parent::exec($statement);
 	}
@@ -190,7 +195,8 @@ $streamed = static fn(?Generator $rows): array => $rows === null ? [] : iterator
 
 // MySQL and PostgreSQL keep their database between runs, so start from nothing
 // rather than from whatever the last run left behind.
-$prefixes = ['chtest_dao_a_', 'chtest_dao_b_', 'chtest_dao_legacy_', 'chtest_dao_fresh_', 'chtest_dao_figures_', 'chtest_dao_race_'];
+$prefixes = ['chtest_dao_a_', 'chtest_dao_b_', 'chtest_dao_legacy_', 'chtest_dao_fresh_', 'chtest_dao_figures_', 'chtest_dao_race_',
+	'chtest_dao_atomic_', 'chtest_dao_concurrent_', 'chtest_dao_half_'];
 $dropAll = static function () use ($pdo, $prefixes, $exec): void {
 	foreach ($prefixes as $prefix) {
 		$pdo->setPrefix($prefix);
@@ -367,7 +373,7 @@ $check(
 // to date. That costs it the one probe and no DDL.
 $pdo->takeStatements();
 $check('a later request checks an up-to-date table with one probe and nothing else', (new ClickHistoryDAO('later', $pdo))->ensureTableExists() &&
-	$pdo->takeStatements() === [ClickHistorySchema::columnProbe('status')]);
+	$pdo->takeStatements() === [ClickHistorySchema::columnProbe('id_category, status')]);
 
 // --- An installation upgrading from the first version ------------------------
 // The table as the first release created it, with neither the category nor the
@@ -428,6 +434,86 @@ $check('a column the table already has is not added again', array_filter(
 	$pdo->takeStatements(),
 	static fn(string $sql): bool => str_contains($sql, 'ADD COLUMN `category_name`') || str_contains($sql, 'ADD COLUMN `id_category`'),
 ) === []);
+
+// A table from up to 0.7.1 whose upgrade added `status` after adding
+// `id_category` had failed. The fast path must not take it as up to date.
+$pdo->setPrefix($prefixes[8]);
+$exec(<<<SQL
+	CREATE TABLE `_click_history` (
+		id_entry BIGINT NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL,
+		feed_name {$nameType} NOT NULL, id_feed {$intType},
+		category_name {$nameType} NOT NULL DEFAULT '',
+		clicked_at BIGINT NOT NULL, first_clicked_at BIGINT NOT NULL,
+		status {$nameType} NOT NULL DEFAULT 'unrated',
+		PRIMARY KEY (id_entry)
+	)
+	SQL);
+$half = new ClickHistoryDAO('half', $pdo);
+$check(
+	'a half-upgraded table gets the column it lacks and takes a click',
+	$half->ensureTableExists() &&
+		$half->record($e1, 'https://example.org/1', 'One', 'Feed', 1, 'Cat', 10, 100) && $stored('id_category', $e1) === '10'
+);
+
+// The index is created with the table or not at all: on SQLite and PostgreSQL
+// it is a statement of its own, and a table left without it would never get
+// it — the CREATE statements only run for a missing table. MySQL declares it
+// inline, in the one statement.
+if ($pdo->dbType() !== 'mysql') {
+	$pdo->setPrefix($prefixes[6]);
+	$indexQuery = $pdo->dbType() === 'sqlite'
+		? "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND tbl_name = '{$prefixes[6]}click_history' AND sql LIKE '%clicked_at%'"
+		: "SELECT COUNT(*) FROM pg_indexes WHERE tablename = '{$prefixes[6]}click_history' AND indexdef LIKE '%clicked_at%'";
+	$hasIndex = static function () use ($pdo, $indexQuery, $asString): bool {
+		$stm = $pdo->query($indexQuery);
+		$count = $stm === false ? '' : $asString($stm->fetchColumn());
+		return $count === '1';
+	};
+	$pdo->failOn = 'CREATE INDEX';
+	$check('a failed CREATE INDEX fails the create', !(new ClickHistoryDAO('atomic1', $pdo))->ensureTableExists());
+	$pdo->failOn = null;
+	$check('… and leaves no table without its index behind', !$tableExists());
+	$check('the next request creates both', (new ClickHistoryDAO('atomic2', $pdo))->ensureTableExists() && $hasIndex());
+}
+
+// Two requests on a fresh installation both see no table. The other one's
+// CREATE lands first, on a connection of its own, and this one's CREATE TABLE
+// then fails, as PostgreSQL's can on a catalog unique index. SQLite needs a
+// file for two connections to share a database.
+$concurrentFile = null;
+if ($pdo->dbType() === 'sqlite') {
+	$concurrentFile = tempnam(sys_get_temp_dir(), 'chtest');
+	assert(is_string($concurrentFile));
+	$mine = new TestPdoSqlite('sqlite:' . $concurrentFile, null, null, $options);
+	$other = new TestPdoSqlite('sqlite:' . $concurrentFile, null, null, $options);
+} else {
+	$mine = $pdo;
+	$other = $dbType === 'mysql'
+		? new TestPdoMysql($dsn, $user, $password, $options)
+		: new TestPdoPgsql($dsn, $user, $password, $options);
+}
+$mine->setPrefix($prefixes[7]);
+$other->setPrefix($prefixes[7]);
+$createdFirst = false;
+$mine->beforeExec = static function (string $sql) use ($other, &$createdFirst): void {
+	if (!$createdFirst && str_contains($sql, 'CREATE TABLE')) {
+		$createdFirst = true;
+		foreach (ClickHistorySchema::createTable($other->dbType()) as $statement) {
+			$other->exec($statement);
+		}
+	}
+};
+$mine->failOn = 'CREATE TABLE';
+$check(
+	'a create that another request finished first still succeeds',
+	(new ClickHistoryDAO('concurrent', $mine))->ensureTableExists() && $createdFirst
+);
+$mine->failOn = null;
+$mine->beforeExec = null;
+if ($concurrentFile !== null) {
+	unset($mine, $other);
+	unlink($concurrentFile);
+}
 
 // Leave nothing behind in a database that outlives the process.
 $dropAll();
