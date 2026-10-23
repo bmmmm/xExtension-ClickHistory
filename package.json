@@ -18,6 +18,6 @@
 		"eslint": "^9.39.5",
 		"globals": "^17.12.0",
 		"linkedom": "^0.18.13",
-		"neostandard": "^0.13.0"
+		"neostandard": "^0.14.1"
 	}
 }
